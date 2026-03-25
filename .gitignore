@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environment
+.venv/
+
+# Logs
+logs/
+
+# Test results
+tests/results/
+
+# pytest
+.pytest_cache/
+
+# Claude Code / dev environment
+.claude/
+docker-claude-settings.json
+docker-entrypoint.sh
+run-claude.sh
+Dockerfile
+HOST_REBUILD_INSTRUCTIONS.md
+docker-claude.md
+mac-claude.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment / secrets
+.env
+*.key
+*.pem

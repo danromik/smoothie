@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smoothie — AI Animation Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/json.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-input: #1c2640;
+  --user-bubble: #0f3460;
+  --accent: #e94560;
+  --accent-hover: #ff6b81;
+  --purple: #533483;
+  --text-primary: #e8e8e8;
+  --text-secondary: #a0a0b0;
+  --text-muted: #6b7280;
+  --code-bg: #0d1117;
+  --code-border: #30363d;
+  --success: #3fb950;
+  --error: #f85149;
+  --border: #2a2a4a;
+  --shadow: rgba(0,0,0,0.3);
+  --divider: #2a2a4a;
+  --divider-hover: #4a4a6a;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+body.dragging { user-select: none; cursor: col-resize; }
+
+/* ─── Toolbar ────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 12px;
+  z-index: 50;
+}
+
+.toolbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.toolbar-logo .icon {
+  width: 26px;
+  height: 26px;
+  background: var(--accent);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.toolbar-spacer { flex: 1; }
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.toolbar-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar-btn:hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.toolbar-btn.active {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: var(--text-primary);
+}
+
+.dev-indicator {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--text-muted);
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.toolbar-btn.active .dev-indicator {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+/* ─── Settings Dropdown ──────────────────────────────────── */
+.settings-wrapper { position: relative; }
+
+.settings-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 320px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px var(--shadow);
+  z-index: 100;
+  display: none;
+  padding: 16px;
+}
+
+.settings-dropdown.open { display: block; }
+
+.settings-group {
+  margin-bottom: 14px;
+}
+
+.settings-group:last-child { margin-bottom: 0; }
+
+.settings-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.settings-radios {
+  display: flex;
+  gap: 8px;
+}
+
+.radio-btn {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.radio-btn:hover { border-color: var(--text-muted); color: var(--text-primary); }
+.radio-btn.selected { background: var(--purple); border-color: var(--purple); color: var(--text-primary); }
+
+.settings-input {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.settings-input:focus { border-color: var(--accent); }
+
+.settings-select {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a0a0b0' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.settings-select option { background: var(--bg-secondary); }
+
+.settings-save-btn {
+  width: 100%;
+  padding: 8px;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.settings-save-btn:hover { background: var(--accent-hover); }
+
+/* ─── Main Layout ────────────────────────────────────────── */
+.main-container {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ─── Panes ──────────────────────────────────────────────── */
+.pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 200px;
+}
+
+.pane-chat { flex: 1 1 40%; }
+.pane-code { flex: 1 1 40%; }
+.pane-dev  { flex: 0 0 300px; display: none; }
+.pane-dev.visible { display: flex; }
+
+.pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pane-header-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.pane-header-btn:hover { color: var(--text-primary); border-color: var(--text-muted); }
+
+/* ─── Divider ────────────────────────────────────────────── */
+.divider {
+  width: 4px;
+  background: var(--divider);
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.divider:hover, .divider.active { background: var(--divider-hover); }
+
+.divider-dev { display: none; }
+.divider-dev.visible { display: block; }
+
+/* ─── Scrollable Areas ───────────────────────────────────── */
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.scroll-area::-webkit-scrollbar { width: 6px; }
+.scroll-area::-webkit-scrollbar-track { background: transparent; }
+.scroll-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.scroll-area::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ─── Chat Messages ──────────────────────────────────────── */
+.chat-messages {
+  padding: 16px;
+}
+
+.message {
+  margin-bottom: 14px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.msg-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.msg-header .name { color: var(--text-secondary); }
+
+.msg-header .copy-btn {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  transition: all 0.15s;
+}
+
+.message:hover .copy-btn { opacity: 1; }
+.msg-header .copy-btn:hover { background: var(--bg-input); color: var(--text-primary); }
+
+.avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.avatar.user { background: var(--user-bubble); }
+.avatar.assistant { background: var(--accent); }
+
+.msg-body {
+  padding-left: 30px;
+  font-size: 14px;
+}
+
+.msg-body.user-body {
+  background: var(--user-bubble);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-left: 30px;
+  max-width: 90%;
+}
+
+/* Markdown in messages */
+.msg-body p { margin-bottom: 6px; }
+.msg-body p:last-child { margin-bottom: 0; }
+.msg-body ul, .msg-body ol { margin: 6px 0; padding-left: 20px; }
+.msg-body li { margin-bottom: 3px; }
+.msg-body h1, .msg-body h2, .msg-body h3 { margin: 10px 0 4px; font-weight: 600; }
+.msg-body h1 { font-size: 17px; }
+.msg-body h2 { font-size: 15px; }
+.msg-body h3 { font-size: 14px; }
+
+.msg-body code:not(pre code) {
+  background: var(--code-bg);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+.msg-body pre {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+
+.msg-body pre code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Streaming */
+.streaming-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 8px 30px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.streaming-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Chat Input ─────────────────────────────────────────── */
+.chat-input-area {
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  transition: border-color 0.15s;
+}
+
+.input-row:focus-within { border-color: var(--accent); }
+
+.input-row textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: none;
+  max-height: 120px;
+  min-height: 21px;
+}
+
+.input-row textarea::placeholder { color: var(--text-muted); }
+
+.send-btn {
+  width: 32px;
+  height: 32px;
+  background: var(--accent);
+  border: none;
+  border-radius: 7px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.send-btn:hover:not(:disabled) { background: var(--accent-hover); }
+.send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.send-btn svg { width: 16px; height: 16px; }
+
+.send-btn .spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.input-hint {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+/* ─── Code Pane ──────────────────────────────────────────── */
+.code-list {
+  padding: 12px;
+}
+
+.code-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.code-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--code-border);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.code-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, var(--purple), #2d1b4e);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.code-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+}
+
+.code-card-bytes {
+  color: rgba(255,255,255,0.6);
+  font-size: 11px;
+}
+
+.code-card-body {
+  max-height: 400px;
+  overflow: auto;
+}
+
+.code-card-body::-webkit-scrollbar { width: 6px; height: 6px; }
+.code-card-body::-webkit-scrollbar-track { background: transparent; }
+.code-card-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.code-card-body pre {
+  margin: 0;
+  background: var(--code-bg);
+  padding: 12px;
+  border-top: 1px solid var(--code-border);
+}
+
+.code-card-body pre code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.code-card-footer {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--code-border);
+  background: var(--bg-secondary);
+}
+
+.code-btn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: none;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--text-primary);
+}
+
+.code-btn.btn-execute {
+  background: var(--accent);
+}
+.code-btn.btn-execute:hover:not(:disabled) { background: var(--accent-hover); }
+.code-btn.btn-execute:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.code-btn.btn-executed {
+  background: var(--success);
+  cursor: default;
+}
+
+.code-btn.btn-failed {
+  background: var(--error);
+}
+
+.code-btn.btn-undo, .code-btn.btn-copy {
+  background: rgba(255,255,255,0.08);
+}
+
+.code-btn.btn-undo:hover, .code-btn.btn-copy:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.code-streaming-status {
+  padding: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ─── Developer Pane ─────────────────────────────────────── */
+.dev-events {
+  padding: 10px;
+}
+
+.dev-event {
+  margin-bottom: 8px;
+  font-size: 12px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.dev-event-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.dev-event-time {
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+.dev-event-badge {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.dev-event-badge.text_delta { background: #1a3a5c; color: #58a6ff; }
+.dev-event-badge.tool_start { background: #3b2e1a; color: #d29922; }
+.dev-event-badge.tool_delta { background: #3b2e1a; color: #d29922; }
+.dev-event-badge.tool_complete { background: #1a3a2e; color: #3fb950; }
+.dev-event-badge.done { background: #1a3a2e; color: #3fb950; }
+.dev-event-badge.error { background: #3a1a1a; color: #f85149; }
+.dev-event-badge.text_complete { background: #1a3a5c; color: #58a6ff; }
+
+.dev-event-body pre {
+  background: var(--code-bg);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow: auto;
+}
+
+.dev-event-body pre::-webkit-scrollbar { width: 4px; }
+.dev-event-body pre::-webkit-scrollbar-track { background: transparent; }
+.dev-event-body pre::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ─── Empty / Placeholder ────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  text-align: center;
+  gap: 8px;
+}
+
+.empty-state .empty-icon { font-size: 32px; opacity: 0.5; }
+.empty-state .empty-text { font-size: 13px; }
+</style>
+</head>
+<body>
+
+<!-- ═══ Toolbar ═══════════════════════════════════════════ -->
+<div class="toolbar">
+  <div class="toolbar-logo">
+    <div class="icon">&#127848;</div>
+    Smoothie
+  </div>
+
+  <div class="settings-wrapper">
+    <button class="toolbar-btn" id="settingsToggle" onclick="toggleSettings()">Settings &#9662;</button>
+    <div class="settings-dropdown" id="settingsDropdown">
+      <div class="settings-group">
+        <span class="settings-label">Authentication</span>
+        <div class="settings-radios">
+          <button class="radio-btn selected" data-mode="subscription" onclick="selectAuthMode(this)">Claude Code</button>
+          <button class="radio-btn" data-mode="api_key" onclick="selectAuthMode(this)">API Key</button>
+        </div>
+      </div>
+      <div class="settings-group" id="apiKeyGroup" style="display:none">
+        <span class="settings-label">API Key</span>
+        <input type="password" class="settings-input" id="apiKeyInput" placeholder="sk-ant-...">
+      </div>
+      <div class="settings-group">
+        <span class="settings-label">Model</span>
+        <select class="settings-select" id="modelSelect">
+          <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+          <option value="claude-opus-4-20250514">Claude Opus 4</option>
+          <option value="claude-haiku-3-5-20241022">Claude Haiku 3.5</option>
+        </select>
+      </div>
+      <div class="settings-group">
+        <button class="settings-save-btn" onclick="saveSettings()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar-spacer"></div>
+
+  <div class="toolbar-actions">
+    <button class="toolbar-btn" onclick="clearChat()">Clear</button>
+    <button class="toolbar-btn" id="devToggle" onclick="toggleDevPane()">
+      <span class="dev-indicator"></span> Developer
+    </button>
+  </div>
+</div>
+
+<!-- ═══ Main Three-Pane Layout ════════════════════════════ -->
+<div class="main-container" id="mainContainer">
+
+  <!-- Chat Pane -->
+  <div class="pane pane-chat" id="paneChat">
+    <div class="scroll-area" id="chatScroll">
+      <div class="chat-messages" id="chatMessages"></div>
+    </div>
+    <div class="chat-input-area">
+      <div class="input-row">
+        <textarea id="messageInput" placeholder="Describe what you'd like to animate..." rows="1"
+                  onkeydown="handleKeyDown(event)" oninput="autoGrow(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send (Enter)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"/>
+          </svg>
+        </button>
+      </div>
+      <div class="input-hint">Enter to send · Shift+Enter for new line</div>
+    </div>
+  </div>
+
+  <!-- Divider: Chat | Code -->
+  <div class="divider" id="dividerChatCode"></div>
+
+  <!-- Code Pane -->
+  <div class="pane pane-code" id="paneCode">
+    <div class="pane-header">Code</div>
+    <div class="scroll-area" id="codeScroll">
+      <div id="codeList" class="code-list">
+        <div class="code-placeholder" id="codePlaceholder">
+          <div class="empty-state">
+            <div class="empty-icon">&#128196;</div>
+            <div class="empty-text">Generated code blocks will appear here</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Divider: Code | Developer -->
+  <div class="divider divider-dev" id="dividerCodeDev"></div>
+
+  <!-- Developer Pane -->
+  <div class="pane pane-dev" id="paneDev">
+    <div class="pane-header">
+      Developer
+      <button class="pane-header-btn" onclick="copyAllDevEvents()">Copy All</button>
+    </div>
+    <div class="scroll-area" id="devScroll">
+      <div class="dev-events" id="devEvents"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────
+let isStreaming = false;
+let currentStreamEl = null;
+let currentStreamText = '';
+let autoScrollChat = true;
+let autoScrollCode = true;
+let devPaneVisible = false;
+let settingsOpen = false;
+let currentAuthMode = 'subscription';
+let codeCards = [];
+let devEventLog = [];
+
+// ─── Markdown ────────────────────────────────────────────
+function renderMarkdown(text) {
+  if (typeof marked !== 'undefined') {
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+      highlight: function(code, lang) {
+        if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+          return hljs.highlight(code, { language: lang }).value;
+        }
+        if (typeof hljs !== 'undefined') return hljs.highlightAuto(code).value;
+        return code;
+      }
+    });
+    return marked.parse(text);
+  }
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function highlightPython(code) {
+  if (typeof hljs !== 'undefined') return hljs.highlight(code, { language: 'python' }).value;
+  return code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function highlightJSON(text) {
+  if (typeof hljs !== 'undefined') {
+    try { return hljs.highlight(text, { language: 'json' }).value; } catch(e) {}
+  }
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Chat Rendering ──────────────────────────────────────
+function addMessage(role, content, extra = {}) {
+  const container = document.getElementById('chatMessages');
+
+  if (role === 'user') {
+    const div = document.createElement('div');
+    div.className = 'message';
+    div.dataset.role = 'user';
+    div.innerHTML = `
+      <div class="msg-header">
+        <div class="avatar user">&#128100;</div>
+        <span class="name">You</span>
+        <button class="copy-btn" onclick="copyText(this, ${JSON.stringify(content)})">Copy</button>
+      </div>
+      <div class="msg-body user-body">${renderMarkdown(content)}</div>
+    `;
+    container.appendChild(div);
+  } else if (role === 'assistant') {
+    const div = document.createElement('div');
+    div.className = 'message';
+    div.dataset.role = 'assistant';
+    div.innerHTML = `
+      <div class="msg-header">
+        <div class="avatar assistant">&#127848;</div>
+        <span class="name">Smoothie</span>
+        <button class="copy-btn" onclick="copyMessageText(this)">Copy</button>
+      </div>
+      <div class="msg-body assistant-body">${renderMarkdown(content)}</div>
+    `;
+    container.appendChild(div);
+  } else if (role === 'tool_status' && extra.has_code) {
+    // Also add a code card to the code pane
+    addCodeCard(extra);
+  }
+
+  maybeScrollChat();
+}
+
+function addStreamingIndicator() {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'streaming-indicator';
+  div.id = 'streamingIndicator';
+  div.innerHTML = '<div class="streaming-dot"></div> Smoothie is thinking...';
+  container.appendChild(div);
+  maybeScrollChat();
+}
+
+function removeStreamingIndicator() {
+  const el = document.getElementById('streamingIndicator');
+  if (el) el.remove();
+}
+
+function startStreamingMessage() {
+  removeStreamingIndicator();
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'message';
+  div.dataset.role = 'assistant';
+  div.id = 'streamingMessage';
+  div.innerHTML = `
+    <div class="msg-header">
+      <div class="avatar assistant">&#127848;</div>
+      <span class="name">Smoothie</span>
+      <button class="copy-btn" onclick="copyMessageText(this)">Copy</button>
+    </div>
+    <div class="msg-body assistant-body"></div>
+  `;
+  container.appendChild(div);
+  currentStreamEl = div.querySelector('.assistant-body');
+  currentStreamText = '';
+  return div;
+}
+
+function appendStreamingText(text) {
+  if (!currentStreamEl) startStreamingMessage();
+  currentStreamText += text;
+  currentStreamEl.innerHTML = renderMarkdown(currentStreamText);
+  maybeScrollChat();
+}
+
+function finalizeStreamingMessage() {
+  currentStreamEl = null;
+  currentStreamText = '';
+  const el = document.getElementById('streamingMessage');
+  if (el) el.removeAttribute('id');
+}
+
+// ─── Code Pane ───────────────────────────────────────────
+function hidePlaceholder() {
+  const ph = document.getElementById('codePlaceholder');
+  if (ph) ph.style.display = 'none';
+}
+
+function showPlaceholderIfEmpty() {
+  const ph = document.getElementById('codePlaceholder');
+  const list = document.getElementById('codeList');
+  if (ph && list.querySelectorAll('.code-card').length === 0) {
+    ph.style.display = '';
+  }
+}
+
+function addCodeCard(data) {
+  hidePlaceholder();
+  const list = document.getElementById('codeList');
+  const card = document.createElement('div');
+  card.className = 'code-card';
+  card.dataset.msgId = data.id || '';
+
+  const code = data.code || '';
+  const bytes = code.length;
+  const executed = data.code_executed || false;
+  const cardIndex = codeCards.length;
+
+  const execClass = executed ? 'code-btn btn-executed' : 'code-btn btn-execute';
+  const execLabel = executed ? '&#10003; Executed' : '&#9654; Execute';
+  const execDisabled = executed ? 'disabled' : '';
+
+  card.innerHTML = `
+    <div class="code-card-header">
+      <div class="code-card-title">
+        &#128296; generate_blender_code
+        <span class="code-card-bytes">${bytes} bytes</span>
+      </div>
+    </div>
+    <div class="code-card-body">
+      <pre><code class="language-python">${highlightPython(code)}</code></pre>
+    </div>
+    <div class="code-card-footer">
+      <button class="${execClass}" ${execDisabled}
+              onclick="executeCodeByIndex(this, ${cardIndex})">${execLabel}</button>
+      <button class="code-btn btn-undo" onclick="undoCode(this)">&#8634; Undo</button>
+      <button class="code-btn btn-copy" onclick="copyCodeCard(this)">&#128203; Copy</button>
+    </div>
+  `;
+
+  list.appendChild(card);
+  codeCards.push({ id: data.id, code });
+  maybeScrollCode();
+}
+
+function addCodeStreamingStatus() {
+  hidePlaceholder();
+  const list = document.getElementById('codeList');
+  const div = document.createElement('div');
+  div.className = 'code-streaming-status';
+  div.id = 'codeStreamStatus';
+  div.innerHTML = '<div class="streaming-dot"></div> Generating code...';
+  list.appendChild(div);
+  maybeScrollCode();
+}
+
+function updateCodeStreamingStatus(bytes) {
+  const el = document.getElementById('codeStreamStatus');
+  if (el) el.innerHTML = `<div class="streaming-dot"></div> Receiving code (${bytes} bytes)...`;
+}
+
+function removeCodeStreamingStatus() {
+  const el = document.getElementById('codeStreamStatus');
+  if (el) el.remove();
+}
+
+// ─── Developer Pane ──────────────────────────────────────
+function addDevEvent(type, data, timestamp) {
+  const ts = timestamp || new Date().toLocaleTimeString();
+  const entry = { type, data, timestamp: ts };
+  devEventLog.push(entry);
+
+  if (!devPaneVisible) return;
+
+  const container = document.getElementById('devEvents');
+  container.appendChild(createDevEventEl(entry));
+
+  const scroll = document.getElementById('devScroll');
+  scroll.scrollTop = scroll.scrollHeight;
+}
+
+function createDevEventEl(entry) {
+  const div = document.createElement('div');
+  div.className = 'dev-event';
+
+  let bodyContent = '';
+  if (typeof entry.data === 'object') {
+    try {
+      bodyContent = highlightJSON(JSON.stringify(entry.data, null, 2));
+    } catch(e) {
+      bodyContent = String(entry.data);
+    }
+  } else {
+    bodyContent = String(entry.data).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  div.innerHTML = `
+    <div class="dev-event-header">
+      <span class="dev-event-time">${entry.timestamp}</span>
+      <span class="dev-event-badge ${entry.type}">${entry.type}</span>
+    </div>
+    <div class="dev-event-body"><pre>${bodyContent}</pre></div>
+  `;
+  return div;
+}
+
+function renderAllDevEvents() {
+  const container = document.getElementById('devEvents');
+  container.innerHTML = '';
+  for (const entry of devEventLog) {
+    container.appendChild(createDevEventEl(entry));
+  }
+  const scroll = document.getElementById('devScroll');
+  scroll.scrollTop = scroll.scrollHeight;
+}
+
+async function loadDevEvents() {
+  try {
+    const res = await fetch('/api/developer');
+    const events = await res.json();
+    if (Array.isArray(events)) {
+      devEventLog = events.map(e => ({
+        type: e.type || 'info',
+        data: e.data || e,
+        timestamp: e.timestamp || ''
+      }));
+      if (devPaneVisible) renderAllDevEvents();
+    }
+  } catch(e) {}
+}
+
+function copyAllDevEvents() {
+  const text = devEventLog.map(e => {
+    const d = typeof e.data === 'object' ? JSON.stringify(e.data, null, 2) : String(e.data);
+    return `[${e.timestamp}] ${e.type}\n${d}`;
+  }).join('\n\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.pane-dev .pane-header-btn');
+    if (btn) { const o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = o, 1500); }
+  });
+}
+
+// ─── API Calls ───────────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('messageInput');
+  const prompt = input.value.trim();
+  if (!prompt || isStreaming) return;
+
+  input.value = '';
+  autoGrow(input);
+  setStreaming(true);
+
+  addMessage('user', prompt);
+  addStreamingIndicator();
+
+  try {
+    const res = await fetch('/api/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+
+    if (!data.session_id) {
+      removeStreamingIndicator();
+      addMessage('assistant', `Error: ${data.error || 'Unknown error'}`);
+      setStreaming(false);
+      return;
+    }
+
+    connectSSE(data.session_id);
+  } catch (err) {
+    removeStreamingIndicator();
+    addMessage('assistant', `Connection error: ${err.message}`);
+    setStreaming(false);
+  }
+}
+
+function connectSSE(sessionId) {
+  const es = new EventSource(`/api/stream/${sessionId}`);
+  let messageStarted = false;
+
+  es.addEventListener('text_delta', (e) => {
+    const data = JSON.parse(e.data);
+    addDevEvent('text_delta', data);
+    if (!messageStarted) {
+      removeStreamingIndicator();
+      startStreamingMessage();
+      messageStarted = true;
+    }
+    appendStreamingText(data.text);
+  });
+
+  es.addEventListener('text_complete', (e) => {
+    const data = JSON.parse(e.data);
+    addDevEvent('text_complete', data);
+  });
+
+  es.addEventListener('tool_start', (e) => {
+    const data = JSON.parse(e.data);
+    addDevEvent('tool_start', data);
+    finalizeStreamingMessage();
+    messageStarted = false;
+    addCodeStreamingStatus();
+  });
+
+  es.addEventListener('tool_delta', (e) => {
+    const data = JSON.parse(e.data);
+    addDevEvent('tool_delta', data);
+    updateCodeStreamingStatus(data.bytes || 0);
+  });
+
+  es.addEventListener('tool_complete', (e) => {
+    removeCodeStreamingStatus();
+    const data = JSON.parse(e.data);
+    addDevEvent('tool_complete', data);
+
+    // Add code card to code pane
+    addCodeCard({
+      id: data.id || '',
+      code: data.code,
+      code_executed: false,
+    });
+
+    // Show post_message in chat if present
+    if (data.post_message) {
+      addMessage('assistant', data.post_message);
+    }
+  });
+
+  es.addEventListener('done', (e) => {
+    addDevEvent('done', {});
+    finalizeStreamingMessage();
+    setStreaming(false);
+    es.close();
+    loadDevEvents();
+  });
+
+  es.addEventListener('error', (e) => {
+    let errorMsg = 'Stream connection lost';
+    try {
+      const data = JSON.parse(e.data);
+      errorMsg = data.message || errorMsg;
+      addDevEvent('error', data);
+    } catch {}
+    finalizeStreamingMessage();
+    removeStreamingIndicator();
+    removeCodeStreamingStatus();
+    if (!messageStarted) {
+      addMessage('assistant', `Error: ${errorMsg}`);
+    }
+    setStreaming(false);
+    es.close();
+  });
+}
+
+function executeCodeByIndex(btn, cardIndex) {
+  const card = codeCards[cardIndex];
+  if (!card) return;
+  executeCode(btn, card.id, card.code);
+}
+
+async function executeCode(btn, msgId, code) {
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+
+  // Find message_index by id
+  let messageIndex = null;
+  try {
+    const res = await fetch('/api/messages');
+    const msgs = await res.json();
+    for (let i = 0; i < msgs.length; i++) {
+      if (msgs[i].id === msgId || (msgs[i].has_code && msgs[i].code === code)) {
+        messageIndex = i;
+        break;
+      }
+    }
+  } catch(e) {}
+
+  try {
+    const body = messageIndex !== null
+      ? { message_index: messageIndex, code }
+      : { code };
+    const res = await fetch('/api/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.success) {
+      btn.className = 'code-btn btn-executed';
+      btn.innerHTML = '&#10003; Executed';
+      addMessage('assistant', '✅ Code executed successfully.' + (data.output ? `\n\`\`\`\n${data.output}\`\`\`` : ''));
+    } else {
+      btn.className = 'code-btn btn-failed';
+      btn.textContent = 'Failed';
+      btn.title = data.error || 'Unknown error';
+      addMessage('assistant', '❌ Execution failed:\n```\n' + (data.error || 'Unknown error') + '\n```');
+      setTimeout(() => {
+        btn.className = 'code-btn btn-execute';
+        btn.innerHTML = '&#9654; Execute';
+        btn.disabled = false;
+        btn.title = '';
+      }, 5000);
+    }
+  } catch (err) {
+    btn.className = 'code-btn btn-failed';
+    btn.textContent = 'Error';
+    addMessage('assistant', '❌ Failed to reach Blender: ' + err.message);
+    btn.disabled = false;
+  }
+}
+
+async function undoCode(btn) {
+  try {
+    await fetch('/api/undo', { method: 'POST' });
+    const card = btn.closest('.code-card');
+    if (card) {
+      const execBtn = card.querySelector('.btn-executed, .btn-failed');
+      if (execBtn) {
+        execBtn.className = 'code-btn btn-execute';
+        execBtn.innerHTML = '&#9654; Execute';
+        execBtn.disabled = false;
+        execBtn.title = '';
+      }
+    }
+  } catch {}
+}
+
+function copyCodeCard(btn) {
+  const card = btn.closest('.code-card');
+  const code = card.querySelector('code');
+  navigator.clipboard.writeText(code.textContent).then(() => {
+    const orig = btn.innerHTML;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.innerHTML = orig, 1500);
+  });
+}
+
+async function clearChat() {
+  try {
+    await fetch('/api/clear', { method: 'POST' });
+    codeCards = [];
+    devEventLog = [];
+    await loadMessages();
+    showPlaceholderIfEmpty();
+    if (devPaneVisible) renderAllDevEvents();
+  } catch {}
+}
+
+async function loadMessages() {
+  try {
+    const res = await fetch('/api/messages');
+    const messages = await res.json();
+    const chatContainer = document.getElementById('chatMessages');
+    const codeList = document.getElementById('codeList');
+    chatContainer.innerHTML = '';
+
+    // Reset code pane — keep placeholder
+    codeList.innerHTML = '';
+    const ph = document.createElement('div');
+    ph.className = 'code-placeholder';
+    ph.id = 'codePlaceholder';
+    ph.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128196;</div><div class="empty-text">Generated code blocks will appear here</div></div>';
+    codeList.appendChild(ph);
+    codeCards = [];
+
+    if (Array.isArray(messages)) {
+      for (const msg of messages) {
+        if (msg.role === 'tool_status' && msg.has_code) {
+          addCodeCard(msg);
+        } else if (msg.role === 'assistant' && msg.content) {
+          addMessage('assistant', msg.content);
+        } else if (msg.role === 'user' && msg.content) {
+          addMessage('user', msg.content);
+        }
+      }
+    }
+
+    scrollToBottomChat();
+    showPlaceholderIfEmpty();
+  } catch (err) {
+    console.error('Failed to load messages:', err);
+  }
+}
+
+// ─── Settings ────────────────────────────────────────────
+function toggleSettings() {
+  settingsOpen = !settingsOpen;
+  document.getElementById('settingsDropdown').classList.toggle('open', settingsOpen);
+  document.getElementById('settingsToggle').classList.toggle('active', settingsOpen);
+}
+
+function selectAuthMode(btn) {
+  document.querySelectorAll('.settings-radios .radio-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  currentAuthMode = btn.dataset.mode;
+  document.getElementById('apiKeyGroup').style.display = currentAuthMode === 'api_key' ? '' : 'none';
+}
+
+async function saveSettings() {
+  const body = {
+    auth_mode: currentAuthMode,
+    model: document.getElementById('modelSelect').value,
+  };
+  if (currentAuthMode === 'api_key') {
+    const key = document.getElementById('apiKeyInput').value.trim();
+    if (key) body.api_key = key;
+  }
+  try {
+    await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    toggleSettings();
+  } catch(e) {}
+}
+
+async function loadSettings() {
+  try {
+    const res = await fetch('/api/settings');
+    const data = await res.json();
+    currentAuthMode = data.auth_mode || 'subscription';
+    document.querySelectorAll('.settings-radios .radio-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.mode === currentAuthMode);
+    });
+    document.getElementById('apiKeyGroup').style.display = currentAuthMode === 'api_key' ? '' : 'none';
+    if (data.model) document.getElementById('modelSelect').value = data.model;
+  } catch(e) {}
+}
+
+// ─── Developer Pane Toggle ───────────────────────────────
+function toggleDevPane() {
+  devPaneVisible = !devPaneVisible;
+  const pane = document.getElementById('paneDev');
+  const divider = document.getElementById('dividerCodeDev');
+  const btn = document.getElementById('devToggle');
+
+  pane.classList.toggle('visible', devPaneVisible);
+  divider.classList.toggle('visible', devPaneVisible);
+  btn.classList.toggle('active', devPaneVisible);
+
+  if (devPaneVisible) {
+    loadDevEvents();
+    renderAllDevEvents();
+  }
+}
+
+// ─── UI Helpers ──────────────────────────────────────────
+function setStreaming(streaming) {
+  isStreaming = streaming;
+  const btn = document.getElementById('sendBtn');
+  const input = document.getElementById('messageInput');
+  btn.disabled = streaming;
+  input.disabled = streaming;
+  if (streaming) {
+    btn.innerHTML = '<div class="spinner"></div>';
+  } else {
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"/></svg>';
+    input.focus();
+  }
+}
+
+function handleKeyDown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = o, 1500);
+  });
+}
+
+function copyMessageText(btn) {
+  const body = btn.closest('.message').querySelector('.msg-body');
+  navigator.clipboard.writeText(body.innerText || body.textContent).then(() => {
+    const o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = o, 1500);
+  });
+}
+
+// ─── Auto-scroll ─────────────────────────────────────────
+const chatScroll = document.getElementById('chatScroll');
+const codeScroll = document.getElementById('codeScroll');
+
+chatScroll.addEventListener('scroll', () => {
+  const threshold = 80;
+  autoScrollChat = chatScroll.scrollHeight - chatScroll.scrollTop - chatScroll.clientHeight < threshold;
+});
+
+codeScroll.addEventListener('scroll', () => {
+  const threshold = 80;
+  autoScrollCode = codeScroll.scrollHeight - codeScroll.scrollTop - codeScroll.clientHeight < threshold;
+});
+
+function maybeScrollChat() { if (autoScrollChat) scrollToBottomChat(); }
+function maybeScrollCode() { if (autoScrollCode) scrollToBottomCode(); }
+
+function scrollToBottomChat() {
+  chatScroll.scrollTop = chatScroll.scrollHeight;
+  autoScrollChat = true;
+}
+
+function scrollToBottomCode() {
+  codeScroll.scrollTop = codeScroll.scrollHeight;
+  autoScrollCode = true;
+}
+
+// ─── Resizable Dividers ──────────────────────────────────
+(function initDividers() {
+  const dividerCC = document.getElementById('dividerChatCode');
+  const dividerCD = document.getElementById('dividerCodeDev');
+  const paneChat = document.getElementById('paneChat');
+  const paneCode = document.getElementById('paneCode');
+  const paneDev = document.getElementById('paneDev');
+
+  let activeDivider = null;
+  let startX = 0;
+  let startLeftWidth = 0;
+  let startRightWidth = 0;
+  let leftPane = null;
+  let rightPane = null;
+
+  function onMouseDown(e, left, right, div) {
+    e.preventDefault();
+    activeDivider = div;
+    leftPane = left;
+    rightPane = right;
+    startX = e.clientX;
+    startLeftWidth = left.getBoundingClientRect().width;
+    startRightWidth = right.getBoundingClientRect().width;
+    document.body.classList.add('dragging');
+    div.classList.add('active');
+  }
+
+  dividerCC.addEventListener('mousedown', (e) => onMouseDown(e, paneChat, paneCode, dividerCC));
+  dividerCD.addEventListener('mousedown', (e) => onMouseDown(e, paneCode, paneDev, dividerCD));
+
+  document.addEventListener('mousemove', (e) => {
+    if (!activeDivider) return;
+    const dx = e.clientX - startX;
+    const newLeft = Math.max(200, startLeftWidth + dx);
+    const newRight = Math.max(200, startRightWidth - dx);
+
+    leftPane.style.flex = 'none';
+    leftPane.style.width = newLeft + 'px';
+    rightPane.style.flex = 'none';
+    rightPane.style.width = newRight + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!activeDivider) return;
+    document.body.classList.remove('dragging');
+    activeDivider.classList.remove('active');
+    activeDivider = null;
+    leftPane = null;
+    rightPane = null;
+  });
+})();
+
+// Close settings dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  if (settingsOpen && !e.target.closest('.settings-wrapper')) {
+    settingsOpen = false;
+    document.getElementById('settingsDropdown').classList.remove('open');
+    document.getElementById('settingsToggle').classList.remove('active');
+  }
+});
+
+// ─── Init ────────────────────────────────────────────────
+loadSettings();
+loadMessages();
+loadDevEvents();
+</script>
+</body>
+</html>
