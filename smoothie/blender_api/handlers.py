@@ -19,6 +19,24 @@ def handle_request(handler, method):
             _handle_command(handler, "get_scene")
         elif path == "/api/status":
             _handle_command(handler, "get_status")
+        elif path == "/api/session/load":
+            _handle_command(handler, "load_session_id")
+        elif path == "/api/materials":
+            _handle_command(handler, "read_materials")
+        elif path == "/api/render":
+            _handle_command(handler, "read_render_settings")
+        elif path == "/api/timeline":
+            _handle_command(handler, "read_timeline")
+        elif path == "/api/project-notes":
+            _handle_command(handler, "read_project_notes")
+        elif path == "/api/project-name":
+            _handle_command(handler, "get_project_name")
+        elif path == "/api/library":
+            _handle_command(handler, "list_library_files")
+        elif path == "/api/assets/libraries":
+            _handle_command(handler, "list_asset_libraries")
+        elif path == "/api/blenderkit/status":
+            _handle_command(handler, "check_blenderkit")
         else:
             _send_json(handler, 404, {"error": "Not found"})
 
@@ -28,6 +46,36 @@ def handle_request(handler, method):
             _handle_command(handler, "execute_code", body)
         elif path == "/api/undo":
             _handle_command(handler, "undo")
+        elif path == "/api/session/save":
+            _handle_command(handler, "save_session_id", body)
+        elif path == "/api/object":
+            _handle_command(handler, "read_object", body)
+        elif path == "/api/animation":
+            _handle_command(handler, "read_animation", body)
+        elif path == "/api/objects":
+            _handle_command(handler, "list_objects", body)
+        elif path == "/api/hierarchy":
+            _handle_command(handler, "read_hierarchy", body)
+        elif path == "/api/search/objects":
+            _handle_command(handler, "search_objects", body)
+        elif path == "/api/search/material":
+            _handle_command(handler, "search_by_material", body)
+        elif path == "/api/project-notes":
+            _handle_command(handler, "write_project_notes", body)
+        elif path == "/api/library/read":
+            _handle_command(handler, "read_library_file", body)
+        elif path == "/api/library/write":
+            _handle_command(handler, "write_library_file", body)
+        elif path == "/api/library/delete":
+            _handle_command(handler, "delete_library_file", body)
+        elif path == "/api/assets/search":
+            _handle_command(handler, "search_assets", body)
+        elif path == "/api/assets/import":
+            _handle_command(handler, "import_asset", body)
+        elif path == "/api/blenderkit/search":
+            _handle_command(handler, "search_blenderkit", body)
+        elif path == "/api/blenderkit/import":
+            _handle_command(handler, "import_blenderkit_asset", body)
         else:
             _send_json(handler, 404, {"error": "Not found"})
 

@@ -2,14 +2,14 @@
 
 ## Project Overview
 
-Smoothie is a Blender add-on that lets users create animations via natural language prompts. The Claude Agent SDK interprets user intent, generates `bpy` Python code, and the user executes it within Blender — providing an end-to-end prompt-to-animation workflow. The user interacts with the AI assistant ("Smoothie", female persona) through a browser-based three-pane chat interface served from localhost.
+Smoothie is a Blender add-on that lets users create animations via natural language prompts. The Claude Agent SDK interprets user intent, generates `bpy` Python code, and the user approves or rejects execution within Blender — providing an agentic prompt-to-animation workflow. The user interacts with the AI assistant ("Smoothie") through a browser-based UI served from localhost.
 
 ## Tech Stack
 
 - **Language**: Python 3.13 (Blender 5.1's embedded Python) + system Python (sidecar)
 - **Blender API**: `bpy` — Blender's Python module for scene manipulation, animation, rendering, and export
-- **AI Backend**: Claude Agent SDK (`claude-agent-sdk`) wrapping the Claude Code CLI
-- **Frontend**: Single-file HTML/CSS/JS three-pane UI served by the sidecar (Starlette + uvicorn)
+- **AI Backend**: Claude Agent SDK (`claude-agent-sdk` v0.1.50+) wrapping the Claude Code CLI
+- **Frontend**: Single-file HTML/CSS/JS UI served by the sidecar (Starlette + uvicorn)
 - **Target Blender Version**: 5.x (5.1+)
 - **Authentication**: Claude Code subscription (default) or Anthropic API key, configured in web UI
 
@@ -21,13 +21,13 @@ Three processes collaborate:
 Process 1: Blender (bpy operations only)
   Main thread: bpy.app.timers callback (50ms) drains command_queue
   Daemon thread: Simplified HTTP server (stdlib) on port 8889
-    - POST /api/execute, POST /api/undo, GET /api/scene, GET /api/status
+    - Code execution, undo, scene queries, library files, asset operations
 
 Process 2: Sidecar (system Python, launched as subprocess by Blender)
   uvicorn + Starlette async server on port 8888
-    - Serves frontend HTML (three-pane UI)
+    - Serves frontend HTML
     - Handles chat API (send, stream, messages, clear, settings)
-    - Proxies execute/undo to Blender's internal API via httpx
+    - Proxies execute/undo/scene tools to Blender's internal API via httpx
     - Runs ClaudeSDKClient (which spawns Process 3)
 
 Process 3: Claude CLI (spawned by Agent SDK)
@@ -38,204 +38,178 @@ Process 3: Claude CLI (spawned by Agent SDK)
 
 ```
 smoothie/
-├── __init__.py              # Add-on registration, preferences, sidecar lifecycle
+├── __init__.py              # Add-on registration, preferences, sidecar lifecycle, load_post handler
 ├── sidecar_launcher.py      # Find system Python, start/stop/monitor sidecar subprocess
 ├── sidecar/
 │   ├── main.py              # Entry point: argparse + uvicorn startup
-│   ├── app.py               # Starlette routes, SSE endpoint, settings API
-│   ├── agent.py             # ClaudeSDKClient wrapper, streaming event processing
-│   ├── tools.py             # MCP tool: generate_blender_code via @tool decorator
+│   ├── app.py               # Starlette routes, SSE endpoint, settings, library, project notes APIs
+│   ├── agent.py             # ClaudeSDKClient wrapper, streaming, SDK session management
+│   ├── tools.py             # MCP tools: code generation, scene exploration, library, assets, project notes
 │   ├── blender_proxy.py     # httpx async client for Blender's internal API
-│   ├── state.py             # Settings, ChatMessage, ConversationState, SSE queues
-│   └── frontend.html        # Three-pane UI (chat | code | developer)
+│   ├── state.py             # Settings, ChatMessage, ConversationState, PendingToolAction
+│   └── frontend.html        # Browser UI (chat | code | developer) with modals
 ├── blender_api/
 │   ├── __init__.py          # start_server(), stop_server(), get_port()
 │   ├── server.py            # ThreadingHTTPServer (stdlib)
-│   ├── handlers.py          # 4 endpoints: execute, undo, scene, status
-│   └── bridge.py            # command_queue + bpy.app.timers callback
+│   ├── handlers.py          # HTTP routing for all Blender API endpoints
+│   └── bridge.py            # command_queue + bpy.app.timers callback + all command handlers
 ├── ui/
 │   ├── panel.py             # Minimal N-panel: "Open Chat" button + status
 │   ├── operators.py         # open_browser, restart_sidecar operators
 │   └── properties.py        # Minimal (no chat state — owned by sidecar)
 ├── ai/
-│   ├── context.py           # Scene context builder (used by blender_api)
+│   ├── context.py           # Scene context builder + object/animation/material/search queries
 │   └── templates.py         # System prompt and scene context template
 ├── executor/
-│   ├── runner.py            # Executes generated bpy code with undo/error handling
+│   ├── runner.py            # Executes generated bpy code with persistent namespace, library pre-loading, undo
 │   └── sandbox.py           # Restricted exec environment (AST validation, blocked imports)
-└── libs/                    # Empty (no longer vendoring — sidecar uses system Python)
+└── libs/                    # Empty (sidecar uses system Python)
 
-# At the project root (parent of smoothie/):
+# At the project root:
 logs/
-├── smoothie.log             # Blender-side log (auto-created)
-└── sidecar.log              # Sidecar process log (auto-created, overwritten each launch)
+├── smoothie.log             # Blender-side log (appended)
+└── sidecar.log              # Sidecar process log (overwritten each launch)
 tests/
 ├── scripts/
-│   ├── test_script.py       # API test script (edit to run tests, auto-triggered by watcher)
-│   ├── test_watcher.py      # File watcher — runs test_script.py on changes, writes results
+│   ├── test_script.py       # Integration test (auto-triggered by watcher)
+│   ├── test_watcher.py      # File watcher — runs test_script.py on changes
 │   ├── conftest.py          # pytest fixtures (bpy stub)
 │   ├── bpy_stub/            # bpy mock for unit tests outside Blender
 │   ├── test_sandbox.py      # Unit tests for executor/sandbox
 │   ├── test_runner.py       # Unit tests for executor/runner
 │   └── test_context.py      # Unit tests for ai/context
 └── results/
-    └── test_results.txt     # Latest test output (auto-generated by watcher)
-.venv/                       # Python venv with claude-agent-sdk (auto-detected by sidecar launcher)
+    └── test_results.txt     # Latest test output
+.venv/                       # Python venv with claude-agent-sdk
 ```
 
 ## Key Design Decisions
 
 ### Sidecar Architecture
-The Claude Agent SDK has heavy native dependencies (pydantic-core, cryptography, cffi) that can't be vendored cross-platform into Blender's `libs/`. Solution: a **sidecar Python process** using a separate Python (not Blender's embedded Python). The sidecar launcher (`sidecar_launcher.py`) first checks for a `.venv` in the project root (resolved via `os.path.realpath` to handle symlinked add-on installs), then falls back to searching system Pythons. It launches whichever Python has `claude-agent-sdk` importable.
+The Claude Agent SDK has heavy native dependencies that can't be vendored cross-platform into Blender's `libs/`. Solution: a **sidecar Python process** using a separate system Python. The sidecar launcher first checks for a `.venv` in the project root, then searches system Pythons. It launches whichever Python has `claude-agent-sdk` importable.
+
+### SDK-Native Session Persistence
+Chat sessions persist via the Claude Agent SDK's built-in session system. Only a session ID string is stored in the Blender document (`bpy.data.texts["smoothie_session"]`). On reload, `get_session_messages()` reconstructs the chat UI and `resume=session_id` gives the AI full context. No manual message serialization needed.
+
+### Agentic Tool Execution (Human-in-the-Loop)
+The `generate_blender_code` tool **blocks** via `asyncio.Event` until the user executes or rejects the code. The tool result (success/failure/rejection with reason) flows back to the AI, enabling multi-turn loops: generate → reject with feedback → revise → execute. With auto-execute enabled, the tool executes immediately without user interaction.
+
+### Persistent Namespace
+Functions and classes defined in one code execution persist in a session-level `_persistent_namespace` dict and are available in subsequent executions. Library files (`bpy.data.texts["smoothie_lib/..."]`) are pre-loaded into the namespace before each execution.
+
+### Scene Exploration via Tools (Not Injected Context)
+Scene context is NOT injected into every prompt. Instead, the AI uses MCP tools (`read_scene`, `search_objects`, `read_object`, etc.) to query the scene when needed. This avoids prompt bloat and gives the AI control over what information it retrieves.
+
+### Project Notes (smoothie.md)
+A project-specific notes file stored in `bpy.data.texts["smoothie.md"]`, included in the system prompt when present. The AI can read/update it via tools. Editable in the Library modal UI.
+
+### Settings Persistence
+User settings (model, auth mode, API key, auto-execute) persist to `~/.config/smoothie/settings.json` (or platform equivalent). Loaded on sidecar startup.
 
 ### Two Authentication Modes
-- **Claude Code Subscription** (default): If the user is logged into the `claude` CLI on their machine, the Agent SDK inherits that auth. No API key needed.
-- **API Key**: User enters an Anthropic API key in the web UI settings. Passed to the SDK via `ANTHROPIC_API_KEY` env var.
+- **Claude Code Subscription** (default): Agent SDK inherits CLI auth. No API key needed.
+- **API Key**: User enters an Anthropic API key in the web UI settings.
 
-Both modes are configurable in the web UI settings dropdown (no Blender preferences for auth).
+## MCP Tools
 
-### Three-Pane Frontend
-The browser UI has three resizable panes:
-- **Chat pane** (left): conversation with markdown rendering, streaming text, input area
-- **Code pane** (middle): generated code blocks with syntax highlighting, Execute/Undo/Copy buttons
-- **Developer pane** (right, hidden by default): real-time stream events log, tool calls, token usage
+### Code Generation
+| Tool | Description |
+|------|-------------|
+| `generate_blender_code` | Generate and execute Python/bpy code (blocks for user approve/reject) |
 
-Panes are separated by draggable dividers (JS mousedown/mousemove/mouseup). Developer pane toggled via toolbar button.
+### Scene Exploration
+| Tool | Description |
+|------|-------------|
+| `read_scene` | Full scene overview |
+| `read_object` | Deep detail on one object |
+| `read_animation` | Keyframe data for one object |
+| `list_objects` | Lightweight object list with optional type filter |
+| `read_hierarchy` | Parent-child tree structure |
+| `search_objects` | Search by name pattern / type / animation status |
+| `search_by_material` | Find objects by material name |
+| `read_materials` | All materials with shader settings |
+| `read_render_settings` | Render engine, resolution, sampling, world |
+| `read_timeline` | Frame range, markers, NLA strips |
 
-### How the AI Layer Works
-1. **User types a message** in the browser chat UI
-2. **Browser POSTs** to sidecar `/api/send` → creates SSE session, starts async task
-3. **Sidecar fetches** scene context from Blender's internal API (`GET :8889/api/scene`)
-4. **Agent SDK streams** via `ClaudeSDKClient.query()` + `receive_messages()`
-5. **StreamEvents** forwarded via SSE to browser (text_delta, tool_use, etc.)
-6. **Claude may call `generate_blender_code` MCP tool** — code appears in the code pane
-7. **User clicks Execute** → browser POSTs to sidecar `/api/execute` → proxied to Blender → bpy sandbox
-8. **Result** flows back: Blender → sidecar → browser
+### Project Notes & Library
+| Tool | Description |
+|------|-------------|
+| `read_project_notes` | Read smoothie.md |
+| `update_project_notes` | Create/update smoothie.md (triggers system prompt refresh) |
+| `list_library_files` | List library files |
+| `read_library_file` | Read a library file |
+| `write_library_file` | Create/update a library file |
+| `delete_library_file` | Delete a library file |
 
-### MCP Tools
-Code generation uses the Agent SDK's MCP tool system:
-- Tool defined via `@tool` decorator + `create_sdk_mcp_server()` in `sidecar/tools.py`
-- Tool: `generate_blender_code` with `code` (required) and `post_message` (optional) parameters
-- The tool handler does NOT execute code — it returns confirmation. Code is surfaced to the UI for user review.
-- New tools can be added by defining more `@tool` functions in `sidecar/tools.py`
+### Asset Management
+| Tool | Description |
+|------|-------------|
+| `list_asset_libraries` | List Blender asset library paths |
+| `search_assets` | Search local asset libraries |
+| `import_asset` | Import asset from local library |
+| `check_blenderkit` | Check if BlenderKit is installed/logged in |
+| `search_blenderkit` | Search BlenderKit online catalog |
+| `import_blenderkit_asset` | Download and import from BlenderKit |
 
-### Conversation History
-The Claude Agent SDK / CLI manages conversation history internally across `query()` calls. The sidecar maintains a local `ConversationState` in `state.py` for UI purposes (displaying messages in the browser), but does not reconstruct API messages manually.
+## Frontend UI
 
-### Code Execution Safety
-- Every execution is wrapped in `bpy.ops.ed.undo_push()` so the user can always revert
-- Generated code runs in a restricted namespace (no `os`, `subprocess`, `shutil`, etc.)
-- AST-based validation catches blocked imports before execution
-- Code execution happens exclusively on Blender's main thread via the bridge timer
-- `_fix_blender5_compat()` in `executor/runner.py` strips Blender 4.x code patterns (e.g. `action.fcurves`) that break in 5.x, before execution. AI models have strong training priors about old APIs — runtime code transformation is more reliable than prompt engineering for this.
+The browser UI (`localhost:8888`) has:
+- **Toolbar**: Settings dropdown, Library modal, project title, segmented [Code | Developer] pane toggle
+- **Chat pane**: Messages, tool info events, code generation blocks with Execute/Reject/feedback controls, "..." menu with Clear Chat, Download Chat, and Print Chat
+- **Code pane** (hidden by default, auto-opens on "View code"): Code viewer with line numbers and syntax highlighting, Copy code button
+- **Developer pane** (hidden by default): Real-time stream events log
 
-### Blender Internal API Endpoints
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST | `/api/execute` | Execute code in bpy sandbox |
-| POST | `/api/undo` | Undo last execution |
-| GET | `/api/scene` | Current scene context |
-| GET | `/api/status` | Health check |
+### Code Generation Block (in chat)
+- Header with byte count + "View code" button
+- Execute button, Reject button, feedback text input + Send
+- Chat input disabled while code is pending action
 
-### Sidecar API Endpoints
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/` | Serve frontend.html |
-| GET | `/api/messages` | Chat history as JSON |
-| POST | `/api/send` | Send message → returns `{session_id}` |
-| GET | `/api/stream/{id}` | SSE stream of AI response |
-| POST | `/api/execute` | Execute code (proxied to Blender) |
-| POST | `/api/undo` | Undo (proxied to Blender) |
-| POST | `/api/clear` | Clear chat + reset agent |
-| GET | `/api/developer` | Stream events for developer pane |
-| GET | `/api/scene` | Scene context (proxied to Blender) |
-| GET/POST | `/api/settings` | Auth mode, API key, model |
-| GET | `/api/health` | Sidecar + Blender status |
-| POST | `/api/shutdown` | Gracefully shut down the sidecar process |
+### Download Chat
+Exports a `.zip` containing:
+- `chat-YYYY-MM-DD.md` — human-readable transcript
+- `chat-YYYY-MM-DD.jsonl` — full SDK session data
+
+### Print Chat
+Opens a print-optimized view in a new browser window, styled to match the app UI (dark theme, message bubbles, tool info rows, code generation blocks). Code blocks are numbered inline with execution status, and full code listings with line numbers and syntax highlighting appear in an appendix. Uses the browser's native `window.print()` — the user can print or save as PDF via the OS print dialog.
 
 ## Development Workflow
 
 ### Dual-Claude Setup
-
-Development uses two simultaneous Claude Code instances with different roles:
 
 | | **Docker Claude** | **Mac Claude** |
 |---|---|---|
 | **Runs in** | Docker container | macOS host |
 | **Permissions** | `--dangerously-skip-permissions` | Normal (user-approved) |
 | **Role** | Primary development — writing code, refactoring, tests | Testing in Blender, system operations |
-| **Notepad file** | `docker-claude.md` | `mac-claude.md` |
 
 ### Prerequisites
-1. **Project venv** with `claude-agent-sdk` installed:
-   ```bash
-   cd /path/to/project/smoothie
-   python3 -m venv .venv
-   .venv/bin/pip install claude-agent-sdk
-   ```
-   The sidecar launcher automatically finds `.venv/bin/python3` in the project root (resolves symlinks via `os.path.realpath`).
-2. **Claude Code CLI** installed and logged in (for subscription auth): `npm install -g @anthropic-ai/claude-code`
+1. **Project venv** with `claude-agent-sdk` installed
+2. **Claude Code CLI** installed and logged in (for subscription auth)
 3. **Blender 5.1+** installed
 
 ### Running in Blender
-1. Symlink the `smoothie/smoothie/` **subdirectory** into Blender's add-ons path:
-   ```bash
-   mkdir -p ~/Library/Application\ Support/Blender/5.1/scripts/addons
-   ln -s /path/to/project/smoothie/smoothie ~/Library/Application\ Support/Blender/5.1/scripts/addons/smoothie
-   ```
-2. Enable the add-on in Blender: Edit > Preferences > Add-ons > search "Smoothie"
-3. Open the N-panel (press `n` in the 3D viewport) and find the "Smoothie" tab
-4. Click "Open Chat in Browser" — the three-pane UI opens at `localhost:8888`
-5. Configure authentication in the Settings dropdown (subscription or API key)
-
-### Logging
-- Blender-side: `logs/smoothie.log` (appended, auto-created)
-- Sidecar-side: `logs/sidecar.log` (overwritten each sidecar launch, also streams to stderr)
-- Logger names: `smoothie.blender_api.*`, `smoothie.sidecar.*`, `smoothie.operators`
+1. Symlink `smoothie/smoothie/` into Blender's add-ons path
+2. Enable the add-on in Blender preferences
+3. Open the N-panel → "Smoothie" tab → "Open Chat in Browser"
+4. Configure authentication in Settings
 
 ### Testing
+- **Integration tests**: `test_watcher.py` watches `test_script.py` for changes, runs automatically, writes to `test_results.txt`
+- **Unit tests**: `python3 -m pytest tests/scripts/`
 
-**Automated integration tests** (primary workflow):
-- `tests/scripts/test_script.py` — Self-contained integration test that auto-launches Blender, sends prompts to the AI, executes generated code, and reports results. Edit the `test()` function for different test scenarios.
-- `tests/scripts/test_watcher.py` — File watcher that auto-runs `test_script.py` on changes and writes output to `tests/results/test_results.txt`.
-- Workflow: user starts `python3 tests/scripts/test_watcher.py` once on Mac; Docker Claude edits `test_script.py`; watcher runs it automatically; Docker Claude reads `tests/results/test_results.txt` to see results.
-- The test script launches Blender with `--python` (with GUI, not `--background`) so the event loop runs and timer callbacks fire. After the test completes, Blender is left running so the user can inspect results in the browser at `localhost:8888`.
-- Sidecar shutdown uses `POST /api/shutdown` for graceful cleanup (no orphaned processes).
-- The sidecar launcher includes `_kill_port_holder()` as a safety net to clean up truly orphaned processes on port 8888.
-
-**Unit tests** (offline, no Blender needed):
-- `tests/scripts/test_sandbox.py`, `test_runner.py`, `test_context.py` — pytest unit tests using a bpy stub
-- Run with: `python3 -m pytest tests/scripts/`
+### Logging
+- Blender-side: `logs/smoothie.log` (appended)
+- Sidecar-side: `logs/sidecar.log` (overwritten each launch)
 
 ## Conventions
 
-- Follow Blender add-on conventions: `bl_info` dict, `register()`/`unregister()` functions
-- Operator classes use `SMOOTHIE_OT_` prefix
-- Panel classes use `SMOOTHIE_PT_` prefix
-- Keep UI code in `ui/`, AI logic in `sidecar/`, execution in `executor/`, internal API in `blender_api/`
-- No Blender C/C++ code — everything is Python
-- Blender internal API uses stdlib only (`http.server`, `socketserver`, `queue`, `threading`)
-- Sidecar uses `starlette` + `uvicorn` (Agent SDK dependencies)
-- Frontend JS libraries loaded from CDN
-
-## Current Status
-
-The full pipeline is working end-to-end: prompt → AI → code generation → execution in Blender.
-
-**Working:**
-- Three-pane browser UI (chat | code | developer) with resizable dividers
-- Claude Agent SDK integration with MCP tools for code generation
-- Streaming: tool_start → tool_delta (with byte count) → tool_complete via SSE
-- MCP tool name resolution (`mcp__smoothie__generate_blender_code`)
-- Dual auth: Claude Code subscription or API key (configured in web UI)
-- Model selection in web UI settings
-- Scene context fetched from Blender per query
-- Code execution with undo via Blender's internal API, with success/failure feedback in chat
-- Blender 5.x compatibility: runtime code fixer strips broken `action.fcurves` patterns
-- Developer pane for inspecting stream events and tool calls
-- Sidecar launches successfully from project `.venv` (symlink-aware path resolution)
-- Orphaned sidecar cleanup via `_kill_port_holder()` and `POST /api/shutdown`
-- Automated integration testing: test script auto-launches Blender, runs prompts, executes code, reports results
-- Enter to send messages, Shift+Enter for newlines
-
-**Integration test results (2026-03-25):** 3/3 phases passed — chat-only prompt, code generation + execution, animation code generation + execution.
+- Blender add-on conventions: `bl_info` dict, `register()`/`unregister()`
+- Operator classes: `SMOOTHIE_OT_` prefix
+- Panel classes: `SMOOTHIE_PT_` prefix
+- Code organization: UI in `ui/`, AI in `sidecar/`, execution in `executor/`, internal API in `blender_api/`
+- Blender internal API: stdlib only
+- Sidecar: `starlette` + `uvicorn`
+- Frontend: single-file HTML, CDN-loaded JS libraries
+- MCP tool results: always use `{"content": [{"type": "text", "text": "..."}]}` format
+- Library files: stored as `bpy.data.texts["smoothie_lib/..."]`
+- BlenderKit addon detection: search for `"blenderkit"` in addon name (handles `bl_ext.user_default.blenderkit` format)

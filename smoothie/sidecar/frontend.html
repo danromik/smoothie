@@ -11,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/python.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/json.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -93,6 +94,148 @@ body.dragging { user-select: none; cursor: col-resize; }
   flex-shrink: 0;
 }
 
+/* ─── Status Area ──────────────────────────────────────── */
+.status-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1;
+  max-width: 700px;
+}
+
+.status-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.status-label {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.status-value {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.status-modified {
+  color: var(--text-muted);
+  font-style: italic;
+  flex-shrink: 0;
+}
+
+.context-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.context-bar {
+  width: 64px;
+  height: 16px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--border);
+  cursor: default;
+}
+
+.context-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--purple);
+  transition: width 0.4s ease, background-color 0.4s ease;
+  min-width: 0;
+}
+
+.context-bar-fill.warning {
+  background: #c0392b;
+}
+
+.context-bar-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-shadow: 0 0 3px rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+
+.context-bar-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  box-shadow: 0 4px 12px var(--shadow);
+  z-index: 200;
+  pointer-events: none;
+}
+
+.context-bar-wrapper:hover .context-bar-tooltip {
+  display: block;
+}
+
+/* ─── Icon-only toolbar buttons ────────────────────────── */
+.toolbar-btn-icon {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-family: inherit;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.toolbar-btn-icon:hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.toolbar-btn-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .toolbar-btn {
   background: transparent;
   border: 1px solid var(--border);
@@ -120,18 +263,53 @@ body.dragging { user-select: none; cursor: col-resize; }
   color: var(--text-primary);
 }
 
-.dev-indicator {
-  width: 10px;
-  height: 10px;
-  border: 1px solid var(--text-muted);
-  border-radius: 2px;
-  display: inline-block;
+/* ─── Chat Menu ─────────────────────────────────────────── */
+.chat-menu-wrapper { position: relative; }
+
+.chat-menu-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 2px;
+  line-height: 1;
 }
 
-.toolbar-btn.active .dev-indicator {
-  background: var(--text-primary);
-  border-color: var(--text-primary);
+.chat-menu-btn:hover { background: var(--bg-input); color: var(--text-primary); }
+
+.chat-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 16px var(--shadow);
+  z-index: 100;
+  display: none;
+  min-width: 160px;
+  padding: 4px 0;
 }
+
+.chat-menu-dropdown.open { display: block; }
+
+.chat-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-menu-item:hover { background: var(--bg-input); color: var(--text-primary); }
 
 /* ─── Settings Dropdown ──────────────────────────────────── */
 .settings-wrapper { position: relative; }
@@ -139,7 +317,7 @@ body.dragging { user-select: none; cursor: col-resize; }
 .settings-dropdown {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
+  right: 0;
   width: 320px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -240,6 +418,54 @@ body.dragging { user-select: none; cursor: col-resize; }
 
 .settings-save-btn:hover { background: var(--accent-hover); }
 
+/* Toggle switch */
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 2px;
+  bottom: 2px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--purple);
+  border-color: var(--purple);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+  background: white;
+}
+
 /* ─── Main Layout ────────────────────────────────────────── */
 .main-container {
   flex: 1;
@@ -255,10 +481,9 @@ body.dragging { user-select: none; cursor: col-resize; }
   min-width: 200px;
 }
 
-.pane-chat { flex: 1 1 40%; }
-.pane-code { flex: 1 1 40%; }
-.pane-dev  { flex: 0 0 300px; display: none; }
-.pane-dev.visible { display: flex; }
+.pane-chat { flex: 1 1 100%; }
+.pane-code { flex: 1 1 40%; display: none; }
+.pane-code.visible { display: flex; }
 
 .pane-header {
   display: flex;
@@ -300,8 +525,8 @@ body.dragging { user-select: none; cursor: col-resize; }
 
 .divider:hover, .divider.active { background: var(--divider-hover); }
 
-.divider-dev { display: none; }
-.divider-dev.visible { display: block; }
+.divider-code { display: none; }
+.divider-code.visible { display: block; }
 
 /* ─── Scrollable Areas ───────────────────────────────────── */
 .scroll-area {
@@ -426,6 +651,26 @@ body.dragging { user-select: none; cursor: col-resize; }
   font-size: 13px;
 }
 
+.streaming-timer {
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+/* Tool info messages (persistent, shown in chat for non-code tools) */
+.tool-info-msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 6px 30px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.tool-info-msg .tool-info-icon { font-size: 14px; }
+.tool-info-msg .tool-info-bytes { font-family: 'JetBrains Mono', monospace; }
+.tool-info-msg .tool-info-time { font-family: 'JetBrains Mono', monospace; }
+
 .streaming-dot {
   width: 7px;
   height: 7px;
@@ -529,16 +774,94 @@ body.dragging { user-select: none; cursor: col-resize; }
   padding: 40px 20px;
 }
 
-.code-card {
+/* Code viewer in the code pane (shown when user clicks "View code") */
+.code-viewer {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+}
+
+.code-viewer.active { display: flex; }
+
+.code-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, var(--purple), #2d1b4e);
+  font-size: 12px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.code-viewer-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+}
+
+.code-viewer-bytes {
+  color: rgba(255,255,255,0.6);
+  font-size: 11px;
+}
+
+.code-viewer-body {
+  flex: 1;
+  overflow: auto;
+}
+
+.code-viewer-body::-webkit-scrollbar { width: 6px; height: 6px; }
+.code-viewer-body::-webkit-scrollbar-track { background: transparent; }
+.code-viewer-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.code-viewer-body pre {
+  margin: 0;
+  background: var(--code-bg);
+  padding: 0;
+  display: flex;
+  min-height: 100%;
+}
+
+.code-viewer-body .line-numbers {
+  padding: 12px 0;
+  text-align: right;
+  user-select: none;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  border-right: 1px solid var(--code-border);
+  min-width: 36px;
+  flex-shrink: 0;
+}
+
+.code-viewer-body .line-numbers span {
+  display: block;
+  padding: 0 8px;
+}
+
+.code-viewer-body pre code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 12px;
+  flex: 1;
+  overflow-x: auto;
+}
+
+/* ─── Tool Block in Chat Pane ───────────────────────────── */
+.tool-block {
   background: var(--bg-secondary);
   border: 1px solid var(--code-border);
   border-radius: 8px;
-  margin-bottom: 10px;
+  margin: 8px 0 14px 30px;
   overflow: hidden;
   animation: fadeIn 0.2s ease-out;
+  max-width: 90%;
 }
 
-.code-card-header {
+.tool-block-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -548,50 +871,58 @@ body.dragging { user-select: none; cursor: col-resize; }
   font-weight: 500;
 }
 
-.code-card-title {
+.tool-block-title {
   display: flex;
   align-items: center;
   gap: 6px;
   color: var(--text-primary);
 }
 
-.code-card-bytes {
+.tool-block-bytes {
   color: rgba(255,255,255,0.6);
   font-size: 11px;
 }
 
-.code-card-body {
-  max-height: 400px;
-  overflow: auto;
+.tool-block-view-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  transition: all 0.15s;
 }
 
-.code-card-body::-webkit-scrollbar { width: 6px; height: 6px; }
-.code-card-body::-webkit-scrollbar-track { background: transparent; }
-.code-card-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-.code-card-body pre {
-  margin: 0;
-  background: var(--code-bg);
-  padding: 12px;
-  border-top: 1px solid var(--code-border);
+.tool-block-view-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-primary);
 }
 
-.code-card-body pre code {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  line-height: 1.5;
+.tool-block-view-btn.active {
+  background: rgba(255,255,255,0.15);
+  color: var(--text-primary);
+  border-color: rgba(255,255,255,0.3);
 }
 
-.code-card-footer {
+.tool-block-actions {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tool-block-action-row {
   display: flex;
   gap: 6px;
-  padding: 8px 12px;
-  border-top: 1px solid var(--code-border);
-  background: var(--bg-secondary);
+  align-items: center;
 }
 
-.code-btn {
-  padding: 4px 10px;
+.tool-btn {
+  padding: 5px 12px;
   border-radius: 4px;
   border: none;
   font-size: 12px;
@@ -601,95 +932,78 @@ body.dragging { user-select: none; cursor: col-resize; }
   color: var(--text-primary);
 }
 
-.code-btn.btn-execute {
+.tool-btn.btn-execute {
   background: var(--accent);
 }
-.code-btn.btn-execute:hover:not(:disabled) { background: var(--accent-hover); }
-.code-btn.btn-execute:disabled { opacity: 0.6; cursor: not-allowed; }
+.tool-btn.btn-execute:hover:not(:disabled) { background: var(--accent-hover); }
+.tool-btn.btn-execute:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.code-btn.btn-executed {
+.tool-btn.btn-executed {
   background: var(--success);
   cursor: default;
 }
 
-.code-btn.btn-failed {
+.tool-btn.btn-rejected-status {
+  background: var(--error);
+  opacity: 0.7;
+  cursor: default;
+}
+
+.tool-btn.btn-failed {
   background: var(--error);
 }
 
-.code-btn.btn-undo, .code-btn.btn-copy {
+.tool-btn.btn-reject {
+  background: rgba(255,255,255,0.08);
+  color: var(--error);
+}
+.tool-btn.btn-reject:hover:not(:disabled) { background: rgba(248,81,73,0.15); }
+.tool-btn.btn-reject:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.tool-btn.btn-undo {
   background: rgba(255,255,255,0.08);
 }
+.tool-btn.btn-undo:hover { background: rgba(255,255,255,0.15); }
 
-.code-btn.btn-undo:hover, .code-btn.btn-copy:hover {
+.tool-block-feedback-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tool-block-feedback-row input {
+  flex: 1;
+  padding: 5px 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.tool-block-feedback-row input:focus { border-color: var(--accent); }
+.tool-block-feedback-row input::placeholder { color: var(--text-muted); }
+.tool-block-feedback-row input:disabled { opacity: 0.5; }
+
+.tool-block-feedback-row .feedback-send-btn {
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: none;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  transition: all 0.15s;
+}
+
+.tool-block-feedback-row .feedback-send-btn:hover:not(:disabled) {
   background: rgba(255,255,255,0.15);
 }
-
-.code-streaming-status {
-  padding: 12px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* ─── Developer Pane ─────────────────────────────────────── */
-.dev-events {
-  padding: 10px;
-}
-
-.dev-event {
-  margin-bottom: 8px;
-  font-size: 12px;
-  animation: fadeIn 0.15s ease-out;
-}
-
-.dev-event-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 3px;
-}
-
-.dev-event-time {
-  color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-}
-
-.dev-event-badge {
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.dev-event-badge.text_delta { background: #1a3a5c; color: #58a6ff; }
-.dev-event-badge.tool_start { background: #3b2e1a; color: #d29922; }
-.dev-event-badge.tool_delta { background: #3b2e1a; color: #d29922; }
-.dev-event-badge.tool_complete { background: #1a3a2e; color: #3fb950; }
-.dev-event-badge.done { background: #1a3a2e; color: #3fb950; }
-.dev-event-badge.error { background: #3a1a1a; color: #f85149; }
-.dev-event-badge.text_complete { background: #1a3a5c; color: #58a6ff; }
-
-.dev-event-body pre {
-  background: var(--code-bg);
-  border-radius: 4px;
-  padding: 6px 8px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 200px;
-  overflow: auto;
-}
-
-.dev-event-body pre::-webkit-scrollbar { width: 4px; }
-.dev-event-body pre::-webkit-scrollbar-track { background: transparent; }
-.dev-event-body pre::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.tool-block-feedback-row .feedback-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ─── Empty / Placeholder ────────────────────────────────── */
 .empty-state {
@@ -705,6 +1019,134 @@ body.dragging { user-select: none; cursor: col-resize; }
 
 .empty-state .empty-icon { font-size: 32px; opacity: 0.5; }
 .empty-state .empty-text { font-size: 13px; }
+
+/* (Project Notes modal removed — merged into Library) */
+
+/* ─── Library Modal ─────────────────────────────────────── */
+.lib-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+
+.lib-overlay.open { display: flex; }
+
+.lib-modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 800px;
+  max-width: 92vw;
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px var(--shadow);
+}
+
+.lib-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.lib-modal-title { font-size: 15px; font-weight: 600; }
+
+.lib-modal-actions { display: flex; gap: 8px; align-items: center; }
+
+.lib-modal-status { font-size: 11px; color: var(--text-muted); }
+
+.lib-modal-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.lib-file-list {
+  width: 200px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.lib-file-item {
+  padding: 8px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lib-file-item:hover { background: var(--bg-input); color: var(--text-primary); }
+.lib-file-item.active { background: var(--purple); color: white; }
+
+.lib-file-item .lib-file-size { font-size: 10px; opacity: 0.6; }
+
+.lib-file-item .lib-file-delete {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--error);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+}
+
+.lib-file-item:hover .lib-file-delete { opacity: 1; }
+
+.lib-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lib-editor textarea {
+  flex: 1;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-primary);
+  border: none;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+.lib-editor textarea::placeholder { color: var(--text-muted); }
+
+.lib-empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.lib-new-btn {
+  padding: 5px 12px;
+  background: var(--accent);
+  border: none;
+  border-radius: 5px;
+  color: white;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.lib-new-btn:hover { background: var(--accent-hover); }
 </style>
 </head>
 <body>
@@ -716,49 +1158,89 @@ body.dragging { user-select: none; cursor: col-resize; }
     Smoothie
   </div>
 
-  <div class="settings-wrapper">
-    <button class="toolbar-btn" id="settingsToggle" onclick="toggleSettings()">Settings &#9662;</button>
-    <div class="settings-dropdown" id="settingsDropdown">
-      <div class="settings-group">
-        <span class="settings-label">Authentication</span>
-        <div class="settings-radios">
-          <button class="radio-btn selected" data-mode="subscription" onclick="selectAuthMode(this)">Claude Code</button>
-          <button class="radio-btn" data-mode="api_key" onclick="selectAuthMode(this)">API Key</button>
-        </div>
+  <div class="status-area" id="statusArea">
+    <span class="status-label">Editing:</span>
+    <span class="status-value" id="statusFilename">Untitled</span>
+    <span class="status-dot"></span>
+    <span class="status-value" id="statusFileSize">—</span>
+    <span class="status-dot"></span>
+    <span class="status-modified" id="statusModified"></span>
+    <span class="status-dot"></span>
+    <div class="context-bar-wrapper" id="contextBarWrapper">
+      <div class="context-bar">
+        <div class="context-bar-fill" id="contextBarFill" style="width:0%"></div>
+        <div class="context-bar-text" id="contextBarText">0%</div>
       </div>
-      <div class="settings-group" id="apiKeyGroup" style="display:none">
-        <span class="settings-label">API Key</span>
-        <input type="password" class="settings-input" id="apiKeyInput" placeholder="sk-ant-...">
-      </div>
-      <div class="settings-group">
-        <span class="settings-label">Model</span>
-        <select class="settings-select" id="modelSelect">
-          <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
-          <option value="claude-opus-4-20250514">Claude Opus 4</option>
-          <option value="claude-haiku-3-5-20241022">Claude Haiku 3.5</option>
-        </select>
-      </div>
-      <div class="settings-group">
-        <button class="settings-save-btn" onclick="saveSettings()">Save</button>
+      <div class="context-bar-tooltip" id="contextBarTooltip">
+        Context window: 0% used. Consider clearing chat when this gets high.
       </div>
     </div>
   </div>
 
-  <div class="toolbar-spacer"></div>
-
   <div class="toolbar-actions">
-    <button class="toolbar-btn" onclick="clearChat()">Clear</button>
-    <button class="toolbar-btn" id="devToggle" onclick="toggleDevPane()">
-      <span class="dev-indicator"></span> Developer
+    <div class="settings-wrapper">
+      <button class="toolbar-btn-icon" id="settingsToggle" onclick="toggleSettings()" title="Settings">
+        <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <div class="settings-dropdown" id="settingsDropdown">
+        <div class="settings-group">
+          <span class="settings-label">Authentication</span>
+          <div class="settings-radios">
+            <button class="radio-btn selected" data-mode="subscription" onclick="selectAuthMode(this)">Claude Code</button>
+            <button class="radio-btn" data-mode="api_key" onclick="selectAuthMode(this)">API Key</button>
+          </div>
+        </div>
+        <div class="settings-group" id="apiKeyGroup" style="display:none">
+          <span class="settings-label">API Key</span>
+          <input type="password" class="settings-input" id="apiKeyInput" placeholder="sk-ant-...">
+        </div>
+        <div class="settings-group">
+          <span class="settings-label">Model</span>
+          <select class="settings-select" id="modelSelect">
+            <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+            <option value="claude-opus-4-20250514">Claude Opus 4</option>
+            <option value="claude-haiku-3-5-20241022">Claude Haiku 3.5</option>
+          </select>
+        </div>
+        <div class="settings-group">
+          <div class="settings-toggle-row">
+            <span class="settings-label" style="margin-bottom:0">Code Auto-Executes</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="autoExecuteToggle" onchange="toggleAutoExecute(this)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="settings-group">
+          <button class="settings-save-btn" onclick="saveSettings()">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="toolbar-btn-icon" onclick="openLibrary()" title="Library">
+      <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
     </button>
+
+    <button class="toolbar-btn" id="codeToggle" onclick="toggleCodePane()">Code</button>
   </div>
 </div>
 
-<!-- ═══ Main Three-Pane Layout ════════════════════════════ -->
+<!-- ═══ Main Layout ═══════════════════════════════════════ -->
 <div class="main-container" id="mainContainer">
 
   <!-- Chat Pane -->
   <div class="pane pane-chat" id="paneChat">
+    <div class="pane-header">
+      Chat
+      <div class="chat-menu-wrapper">
+        <button class="chat-menu-btn" onclick="toggleChatMenu(event)">&#8943;</button>
+        <div class="chat-menu-dropdown" id="chatMenuDropdown">
+          <button class="chat-menu-item" onclick="clearChat();closeChatMenu()">Clear Chat</button>
+          <button class="chat-menu-item" onclick="downloadChat();closeChatMenu()">Download Chat</button>
+          <button class="chat-menu-item" onclick="printChat();closeChatMenu()">Print Chat</button>
+        </div>
+      </div>
+    </div>
     <div class="scroll-area" id="chatScroll">
       <div class="chat-messages" id="chatMessages"></div>
     </div>
@@ -777,36 +1259,37 @@ body.dragging { user-select: none; cursor: col-resize; }
   </div>
 
   <!-- Divider: Chat | Code -->
-  <div class="divider" id="dividerChatCode"></div>
+  <div class="divider divider-code" id="dividerChatCode"></div>
 
   <!-- Code Pane -->
   <div class="pane pane-code" id="paneCode">
-    <div class="pane-header">Code</div>
+    <div class="pane-header">
+      Code
+      <button class="pane-header-btn" id="copyCodeBtn" onclick="copyCurrentCode()" style="display:none">Copy code</button>
+    </div>
     <div class="scroll-area" id="codeScroll">
       <div id="codeList" class="code-list">
         <div class="code-placeholder" id="codePlaceholder">
           <div class="empty-state">
             <div class="empty-icon">&#128196;</div>
-            <div class="empty-text">Generated code blocks will appear here</div>
+            <div class="empty-text">Click "View code" on a code block to see the code here</div>
+          </div>
+        </div>
+        <div class="code-viewer" id="codeViewer">
+          <div class="code-viewer-header" id="codeViewerHeader">
+            <div class="code-viewer-title">
+              &#128296; <span id="codeViewerLabel">generate_blender_code</span>
+              <span class="code-viewer-bytes" id="codeViewerBytes"></span>
+            </div>
+          </div>
+          <div class="code-viewer-body" id="codeViewerBody">
+            <pre><div class="line-numbers" id="codeViewerLineNums"></div><code class="language-python" id="codeViewerCode"></code></pre>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Divider: Code | Developer -->
-  <div class="divider divider-dev" id="dividerCodeDev"></div>
-
-  <!-- Developer Pane -->
-  <div class="pane pane-dev" id="paneDev">
-    <div class="pane-header">
-      Developer
-      <button class="pane-header-btn" onclick="copyAllDevEvents()">Copy All</button>
-    </div>
-    <div class="scroll-area" id="devScroll">
-      <div class="dev-events" id="devEvents"></div>
-    </div>
-  </div>
 
 </div>
 
@@ -817,11 +1300,12 @@ let currentStreamEl = null;
 let currentStreamText = '';
 let autoScrollChat = true;
 let autoScrollCode = true;
-let devPaneVisible = false;
 let settingsOpen = false;
 let currentAuthMode = 'subscription';
 let codeCards = [];
-let devEventLog = [];
+let autoExecuteEnabled = false;
+let streamingTimerInterval = null;
+let streamingStartTime = null;
 
 // ─── Markdown ────────────────────────────────────────────
 function renderMarkdown(text) {
@@ -845,13 +1329,6 @@ function renderMarkdown(text) {
 function highlightPython(code) {
   if (typeof hljs !== 'undefined') return hljs.highlight(code, { language: 'python' }).value;
   return code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function highlightJSON(text) {
-  if (typeof hljs !== 'undefined') {
-    try { return hljs.highlight(text, { language: 'json' }).value; } catch(e) {}
-  }
-  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // ─── Chat Rendering ──────────────────────────────────────
@@ -885,24 +1362,53 @@ function addMessage(role, content, extra = {}) {
     `;
     container.appendChild(div);
   } else if (role === 'tool_status' && extra.has_code) {
-    // Also add a code card to the code pane
-    addCodeCard(extra);
+    addToolBlock(extra);
   }
 
   maybeScrollChat();
 }
 
-function addStreamingIndicator() {
+function formatElapsed(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  if (min > 0) return `${min}m ${sec.toString().padStart(2, '0')}s`;
+  return `${sec}s`;
+}
+
+function addStreamingIndicator(label = 'Smoothie is thinking...') {
+  removeStreamingIndicator();
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = 'streaming-indicator';
   div.id = 'streamingIndicator';
-  div.innerHTML = '<div class="streaming-dot"></div> Smoothie is thinking...';
+  div.innerHTML = `<div class="streaming-dot"></div> <span class="streaming-label">${label}</span> <span class="streaming-timer"></span>`;
   container.appendChild(div);
   maybeScrollChat();
+
+  streamingStartTime = Date.now();
+  streamingTimerInterval = setInterval(() => {
+    const timerEl = div.querySelector('.streaming-timer');
+    if (timerEl) {
+      timerEl.textContent = `(${formatElapsed(Date.now() - streamingStartTime)})`;
+    }
+  }, 1000);
+}
+
+function updateStreamingIndicatorLabel(label) {
+  const el = document.getElementById('streamingIndicator');
+  if (el) {
+    const labelEl = el.querySelector('.streaming-label');
+    if (labelEl) labelEl.textContent = label;
+  }
 }
 
 function removeStreamingIndicator() {
+  if (streamingTimerInterval) {
+    clearInterval(streamingTimerInterval);
+    streamingTimerInterval = null;
+  }
+  streamingStartTime = null;
   const el = document.getElementById('streamingIndicator');
   if (el) el.remove();
 }
@@ -942,154 +1448,311 @@ function finalizeStreamingMessage() {
   if (el) el.removeAttribute('id');
 }
 
-// ─── Code Pane ───────────────────────────────────────────
-function hidePlaceholder() {
-  const ph = document.getElementById('codePlaceholder');
-  if (ph) ph.style.display = 'none';
+// ─── Code Pane & Tool Blocks ─────────────────────────────
+let activeCodeIndex = -1; // Which code card is shown in the code pane
+
+function generateLineNumbers(code) {
+  const lines = code.split('\n');
+  return lines.map((_, i) => `<span>${i + 1}</span>`).join('');
 }
 
-function showPlaceholderIfEmpty() {
-  const ph = document.getElementById('codePlaceholder');
-  const list = document.getElementById('codeList');
-  if (ph && list.querySelectorAll('.code-card').length === 0) {
-    ph.style.display = '';
-  }
+function _updateCodePaneContent(cardIndex) {
+  // Update code pane content without opening it
+  const card = codeCards[cardIndex];
+  if (!card) return;
+
+  const placeholder = document.getElementById('codePlaceholder');
+  const viewer = document.getElementById('codeViewer');
+  const copyBtn = document.getElementById('copyCodeBtn');
+
+  placeholder.style.display = 'none';
+  viewer.classList.add('active');
+  copyBtn.style.display = '';
+
+  document.getElementById('codeViewerBytes').textContent = `${card.code.length} bytes`;
+  document.getElementById('codeViewerLineNums').innerHTML = generateLineNumbers(card.code);
+  document.getElementById('codeViewerCode').innerHTML = highlightPython(card.code);
+
+  document.querySelectorAll('.tool-block-view-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`.tool-block[data-card-index="${cardIndex}"] .tool-block-view-btn`);
+  if (btn) btn.classList.add('active');
+
+  activeCodeIndex = cardIndex;
 }
 
-function addCodeCard(data) {
-  hidePlaceholder();
-  const list = document.getElementById('codeList');
-  const card = document.createElement('div');
-  card.className = 'code-card';
-  card.dataset.msgId = data.id || '';
+function showCodeInPane(cardIndex) {
+  const card = codeCards[cardIndex];
+  if (!card) return;
+
+  showCodePane(); // Auto-open code pane
+  _updateCodePaneContent(cardIndex);
+}
+
+function copyCurrentCode() {
+  if (activeCodeIndex < 0 || !codeCards[activeCodeIndex]) return;
+  navigator.clipboard.writeText(codeCards[activeCodeIndex].code).then(() => {
+    const btn = document.getElementById('copyCodeBtn');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+function addToolBlock(data) {
+  const container = document.getElementById('chatMessages');
+  const block = document.createElement('div');
+  block.className = 'tool-block';
+  block.dataset.cardIndex = codeCards.length;
 
   const code = data.code || '';
   const bytes = code.length;
   const executed = data.code_executed || false;
+  const autoExecuted = data.auto_executed || false;
+  const rejected = data.code_rejected || false;
   const cardIndex = codeCards.length;
+  const resolved = executed || autoExecuted || rejected;
 
-  const execClass = executed ? 'code-btn btn-executed' : 'code-btn btn-execute';
-  const execLabel = executed ? '&#10003; Executed' : '&#9654; Execute';
-  const execDisabled = executed ? 'disabled' : '';
+  let execClass, execLabel, execDisabled, rejectDisabled, feedbackDisabled;
+  if (executed || autoExecuted) {
+    execClass = 'tool-btn btn-executed';
+    execLabel = autoExecuted ? '&#10003; Auto-Executed' : '&#10003; Executed';
+    execDisabled = 'disabled';
+    rejectDisabled = 'disabled';
+    feedbackDisabled = 'disabled';
+  } else if (rejected) {
+    execClass = 'tool-btn btn-rejected-status';
+    execLabel = '&#10007; Rejected';
+    execDisabled = 'disabled';
+    rejectDisabled = 'disabled';
+    feedbackDisabled = 'disabled';
+  } else {
+    execClass = 'tool-btn btn-execute';
+    execLabel = '&#9654; Execute';
+    execDisabled = '';
+    rejectDisabled = '';
+    feedbackDisabled = '';
+  }
 
-  card.innerHTML = `
-    <div class="code-card-header">
-      <div class="code-card-title">
-        &#128296; generate_blender_code
-        <span class="code-card-bytes">${bytes} bytes</span>
+  // When auto-execute is on (or was auto-executed), show a compact block
+  const isAutoMode = autoExecuteEnabled || autoExecuted;
+
+  block.innerHTML = `
+    <div class="tool-block-header">
+      <div class="tool-block-title">
+        &#128296; Code generated
+        <span class="tool-block-bytes">${bytes} bytes</span>
+      </div>
+      <button class="tool-block-view-btn" onclick="showCodeInPane(${cardIndex})">
+        &#128065; View code
+      </button>
+    </div>
+    ${isAutoMode ? `
+    <div class="tool-block-actions">
+      <div class="tool-block-action-row">
+        <button class="${execClass}" ${execDisabled}
+                onclick="executeCodeByIndex(this, ${cardIndex})">${execLabel}</button>
+        ${(executed || autoExecuted) ? `<button class="tool-btn btn-undo" onclick="undoCode(this)">&#8634; Undo</button>` : ''}
       </div>
     </div>
-    <div class="code-card-body">
-      <pre><code class="language-python">${highlightPython(code)}</code></pre>
+    ` : `
+    <div class="tool-block-actions">
+      <div class="tool-block-action-row">
+        <button class="${execClass}" ${execDisabled}
+                onclick="executeCodeByIndex(this, ${cardIndex})">${execLabel}</button>
+        ${resolved ? '' : `<button class="tool-btn btn-undo" onclick="undoCode(this)">&#8634; Undo</button>`}
+        ${executed ? `<button class="tool-btn btn-undo" onclick="undoCode(this)">&#8634; Undo</button>` : ''}
+      </div>
+      <div class="tool-block-action-row">
+        <button class="tool-btn btn-reject" ${rejectDisabled}
+                onclick="rejectCode(this, ${cardIndex})">&#10007; Reject</button>
+      </div>
+      <div class="tool-block-feedback-row">
+        <input type="text" placeholder="Suggest a change..." ${feedbackDisabled}
+               onkeydown="if(event.key==='Enter')sendFeedback(this, ${cardIndex})">
+        <button class="feedback-send-btn" ${feedbackDisabled}
+                onclick="sendFeedback(this, ${cardIndex})">Send</button>
+      </div>
     </div>
-    <div class="code-card-footer">
-      <button class="${execClass}" ${execDisabled}
-              onclick="executeCodeByIndex(this, ${cardIndex})">${execLabel}</button>
-      <button class="code-btn btn-undo" onclick="undoCode(this)">&#8634; Undo</button>
-      <button class="code-btn btn-copy" onclick="copyCodeCard(this)">&#128203; Copy</button>
-    </div>
+    `}
   `;
 
-  list.appendChild(card);
+  container.appendChild(block);
   codeCards.push({ id: data.id, code });
-  maybeScrollCode();
-}
 
-function addCodeStreamingStatus() {
-  hidePlaceholder();
-  const list = document.getElementById('codeList');
-  const div = document.createElement('div');
-  div.className = 'code-streaming-status';
-  div.id = 'codeStreamStatus';
-  div.innerHTML = '<div class="streaming-dot"></div> Generating code...';
-  list.appendChild(div);
-  maybeScrollCode();
-}
-
-function updateCodeStreamingStatus(bytes) {
-  const el = document.getElementById('codeStreamStatus');
-  if (el) el.innerHTML = `<div class="streaming-dot"></div> Receiving code (${bytes} bytes)...`;
-}
-
-function removeCodeStreamingStatus() {
-  const el = document.getElementById('codeStreamStatus');
-  if (el) el.remove();
-}
-
-// ─── Developer Pane ──────────────────────────────────────
-function addDevEvent(type, data, timestamp) {
-  const ts = timestamp || new Date().toLocaleTimeString();
-  const entry = { type, data, timestamp: ts };
-  devEventLog.push(entry);
-
-  if (!devPaneVisible) return;
-
-  const container = document.getElementById('devEvents');
-  container.appendChild(createDevEventEl(entry));
-
-  const scroll = document.getElementById('devScroll');
-  scroll.scrollTop = scroll.scrollHeight;
-}
-
-function createDevEventEl(entry) {
-  const div = document.createElement('div');
-  div.className = 'dev-event';
-
-  let bodyContent = '';
-  if (typeof entry.data === 'object') {
-    try {
-      bodyContent = highlightJSON(JSON.stringify(entry.data, null, 2));
-    } catch(e) {
-      bodyContent = String(entry.data);
-    }
+  // Auto-show the latest code in the code pane (but don't force-open the pane on auto-execute)
+  if (isAutoMode) {
+    // Update code pane content silently without opening it
+    _updateCodePaneContent(cardIndex);
   } else {
-    bodyContent = String(entry.data).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    showCodeInPane(cardIndex);
   }
-
-  div.innerHTML = `
-    <div class="dev-event-header">
-      <span class="dev-event-time">${entry.timestamp}</span>
-      <span class="dev-event-badge ${entry.type}">${entry.type}</span>
-    </div>
-    <div class="dev-event-body"><pre>${bodyContent}</pre></div>
-  `;
-  return div;
+  maybeScrollChat();
+  return block;
 }
 
-function renderAllDevEvents() {
-  const container = document.getElementById('devEvents');
-  container.innerHTML = '';
-  for (const entry of devEventLog) {
-    container.appendChild(createDevEventEl(entry));
-  }
-  const scroll = document.getElementById('devScroll');
-  scroll.scrollTop = scroll.scrollHeight;
-}
-
-async function loadDevEvents() {
+async function rejectCode(btn, cardIndex) {
+  const block = btn.closest('.tool-block');
   try {
-    const res = await fetch('/api/developer');
-    const events = await res.json();
-    if (Array.isArray(events)) {
-      devEventLog = events.map(e => ({
-        type: e.type || 'info',
-        data: e.data || e,
-        timestamp: e.timestamp || ''
-      }));
-      if (devPaneVisible) renderAllDevEvents();
-    }
-  } catch(e) {}
+    await fetch('/api/reject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: '' })
+    });
+    _disableToolBlock(block, 'rejected');
+    codePendingAction = false;
+    setChatInputEnabled(true);
+  } catch(e) {
+    console.error('Reject failed:', e);
+  }
 }
 
-function copyAllDevEvents() {
-  const text = devEventLog.map(e => {
-    const d = typeof e.data === 'object' ? JSON.stringify(e.data, null, 2) : String(e.data);
-    return `[${e.timestamp}] ${e.type}\n${d}`;
-  }).join('\n\n');
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = document.querySelector('.pane-dev .pane-header-btn');
-    if (btn) { const o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = o, 1500); }
-  });
+async function sendFeedback(el, cardIndex) {
+  const block = el.closest('.tool-block');
+  const input = block.querySelector('.tool-block-feedback-row input');
+  const reason = input.value.trim();
+  if (!reason) return;
+
+  try {
+    await fetch('/api/reject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    });
+    _disableToolBlock(block, 'rejected');
+    codePendingAction = false;
+    setChatInputEnabled(true);
+  } catch(e) {
+    console.error('Reject with feedback failed:', e);
+  }
+}
+
+function _disableToolBlock(block, status) {
+  const execBtn = block.querySelector('.btn-execute, .btn-executed');
+  if (execBtn) {
+    if (status === 'executed') {
+      execBtn.className = 'tool-btn btn-executed';
+      execBtn.innerHTML = '&#10003; Executed';
+    } else {
+      execBtn.className = 'tool-btn btn-rejected-status';
+      execBtn.innerHTML = '&#10007; Rejected';
+    }
+    execBtn.disabled = true;
+  }
+  block.querySelectorAll('.btn-reject, .feedback-send-btn').forEach(b => b.disabled = true);
+  const input = block.querySelector('.tool-block-feedback-row input');
+  if (input) input.disabled = true;
+
+  // Auto-hide code pane after execution
+  if (status === 'executed') hideCodePane();
+}
+
+let codePendingAction = false;
+
+function setChatInputEnabled(enabled) {
+  const input = document.getElementById('messageInput');
+  const btn = document.getElementById('sendBtn');
+  input.disabled = !enabled || isStreaming;
+  btn.disabled = !enabled || isStreaming;
+  // Placeholder reflects pending-code state (independent of streaming)
+  input.placeholder = enabled
+    ? "Describe what you'd like to animate..."
+    : "Execute or reject the pending code to continue...";
+}
+
+const _TOOL_LABELS = {
+  'mcp__smoothie__generate_blender_code': { label: 'Generating code', icon: '&#128296;', isCode: true },
+  'mcp__smoothie__read_scene': { label: 'Reading scene', icon: '&#128065;' },
+  'mcp__smoothie__read_object': { label: 'Reading object details', icon: '&#128065;' },
+  'mcp__smoothie__read_animation': { label: 'Reading animation data', icon: '&#127916;' },
+  'mcp__smoothie__list_objects': { label: 'Listing objects', icon: '&#128203;' },
+  'mcp__smoothie__read_hierarchy': { label: 'Reading hierarchy', icon: '&#128466;' },
+  'mcp__smoothie__search_objects': { label: 'Searching objects', icon: '&#128269;' },
+  'mcp__smoothie__search_by_material': { label: 'Searching by material', icon: '&#128269;' },
+  'mcp__smoothie__read_materials': { label: 'Reading materials', icon: '&#127912;' },
+  'mcp__smoothie__read_render_settings': { label: 'Reading render settings', icon: '&#9881;' },
+  'mcp__smoothie__read_timeline': { label: 'Reading timeline', icon: '&#9202;' },
+  'mcp__smoothie__read_project_notes': { label: 'Reading project notes', icon: '&#128221;' },
+  'mcp__smoothie__update_project_notes': { label: 'Updating project notes', icon: '&#128221;' },
+  'mcp__smoothie__list_library_files': { label: 'Listing library files', icon: '&#128218;' },
+  'mcp__smoothie__read_library_file': { label: 'Reading library file', icon: '&#128218;' },
+  'mcp__smoothie__write_library_file': { label: 'Writing library file', icon: '&#128218;' },
+  'mcp__smoothie__delete_library_file': { label: 'Deleting library file', icon: '&#128218;' },
+  'mcp__smoothie__list_asset_libraries': { label: 'Listing asset libraries', icon: '&#127912;' },
+  'mcp__smoothie__search_assets': { label: 'Searching local assets', icon: '&#128269;' },
+  'mcp__smoothie__import_asset': { label: 'Importing asset', icon: '&#128230;' },
+  'mcp__smoothie__check_blenderkit': { label: 'Checking BlenderKit', icon: '&#128268;' },
+  'mcp__smoothie__search_blenderkit': { label: 'Searching BlenderKit', icon: '&#128269;' },
+  'mcp__smoothie__import_blenderkit_asset': { label: 'Importing from BlenderKit', icon: '&#128230;' },
+};
+
+let _activeToolName = '';
+let _activeToolInfoEl = null;
+
+function _getToolInfo(name) {
+  if (_TOOL_LABELS[name]) return _TOOL_LABELS[name];
+  // Fallback: derive a readable label from the tool name
+  const short = name.replace(/^mcp__smoothie__/, '').replace(/_/g, ' ');
+  return { label: short.charAt(0).toUpperCase() + short.slice(1), icon: '&#9881;' };
+}
+
+function addToolInfoMessage(name) {
+  const info = _getToolInfo(name);
+  if (info.isCode) {
+    // Code generation uses the streaming indicator
+    addStreamingIndicator('Generating code...');
+    return;
+  }
+
+  // Finalize any previous tool info first (stops its timer)
+  finalizeToolInfo();
+
+  // For non-code tools, add a persistent info message to chat
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'tool-info-msg';
+  div.id = 'activeToolInfo';
+  div.innerHTML = `<span class="tool-info-icon">${info.icon}</span> <span class="tool-info-label">${info.label}...</span> <span class="tool-info-bytes"></span> <span class="tool-info-time"></span>`;
+  container.appendChild(div);
+  _activeToolInfoEl = div;
+  maybeScrollChat();
+
+  // Start timing
+  const startTime = Date.now();
+  div._timer = setInterval(() => {
+    const timeEl = div.querySelector('.tool-info-time');
+    if (timeEl) timeEl.textContent = `(${formatElapsed(Date.now() - startTime)})`;
+  }, 1000);
+}
+
+function addToolInfoStatic(toolName) {
+  // Render a completed tool info message (no timer) — used when loading from history
+  const info = _getToolInfo(toolName);
+  if (info.isCode) return;
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'tool-info-msg';
+  div.innerHTML = `<span class="tool-info-icon">${info.icon}</span> <span class="tool-info-label">${info.label}</span>`;
+  container.appendChild(div);
+}
+
+function updateToolInfoBytes(bytes) {
+  if (_activeToolInfoEl) {
+    const bytesEl = _activeToolInfoEl.querySelector('.tool-info-bytes');
+    if (bytesEl) bytesEl.textContent = `${bytes} bytes`;
+  } else {
+    // Must be code generation
+    updateStreamingIndicatorLabel(`Generating code (${bytes} bytes)...`);
+  }
+}
+
+function finalizeToolInfo() {
+  if (_activeToolInfoEl) {
+    if (_activeToolInfoEl._timer) clearInterval(_activeToolInfoEl._timer);
+    // Keep the element in the DOM — tool info messages are persistent chat events.
+    // Just remove the "active" tracking so we can create the next one.
+    _activeToolInfoEl.removeAttribute('id');
+    _activeToolInfoEl = null;
+  }
 }
 
 // ─── API Calls ───────────────────────────────────────────
@@ -1134,7 +1797,6 @@ function connectSSE(sessionId) {
 
   es.addEventListener('text_delta', (e) => {
     const data = JSON.parse(e.data);
-    addDevEvent('text_delta', data);
     if (!messageStarted) {
       removeStreamingIndicator();
       startStreamingMessage();
@@ -1145,47 +1807,68 @@ function connectSSE(sessionId) {
 
   es.addEventListener('text_complete', (e) => {
     const data = JSON.parse(e.data);
-    addDevEvent('text_complete', data);
   });
 
   es.addEventListener('tool_start', (e) => {
     const data = JSON.parse(e.data);
-    addDevEvent('tool_start', data);
     finalizeStreamingMessage();
+    removeStreamingIndicator();
     messageStarted = false;
-    addCodeStreamingStatus();
+    _activeToolName = data.name || '';
+    addToolInfoMessage(_activeToolName);
   });
 
   es.addEventListener('tool_delta', (e) => {
     const data = JSON.parse(e.data);
-    addDevEvent('tool_delta', data);
-    updateCodeStreamingStatus(data.bytes || 0);
+    updateToolInfoBytes(data.bytes || 0);
   });
 
   es.addEventListener('tool_complete', (e) => {
-    removeCodeStreamingStatus();
     const data = JSON.parse(e.data);
-    addDevEvent('tool_complete', data);
+    const info = _getToolInfo(_activeToolName);
 
-    // Add code card to code pane
-    addCodeCard({
-      id: data.id || '',
-      code: data.code,
-      code_executed: false,
-    });
-
-    // Show post_message in chat if present
-    if (data.post_message) {
-      addMessage('assistant', data.post_message);
+    if (info.isCode) {
+      // Code generation: remove streaming indicator, show tool block
+      removeStreamingIndicator();
+      addToolBlock({
+        id: data.id || '',
+        code: data.code,
+        code_executed: false,
+        auto_executed: autoExecuteEnabled,
+      });
+      // Disable chat input while code is pending user action
+      if (!autoExecuteEnabled) {
+        codePendingAction = true;
+        setChatInputEnabled(false);
+      }
+    } else {
+      // Non-code tool: finalize the info message, then show thinking indicator
+      // while the AI processes the tool result
+      finalizeToolInfo();
+      addStreamingIndicator('Smoothie is thinking...');
     }
+    _activeToolName = '';
   });
 
   es.addEventListener('done', (e) => {
-    addDevEvent('done', {});
     finalizeStreamingMessage();
+    finalizeToolInfo();
+    removeStreamingIndicator();
     setStreaming(false);
     es.close();
-    loadDevEvents();
+    // Update context usage from done event data
+    try {
+      const data = JSON.parse(e.data);
+      if (data.usage) {
+        const totalTokens = (data.usage.input_tokens || 0)
+          + (data.usage.cache_creation_input_tokens || 0)
+          + (data.usage.cache_read_input_tokens || 0);
+        const maxTokens = 200000;
+        updateContextBar(Math.min(Math.round((totalTokens / maxTokens) * 100), 100));
+      }
+    } catch {}
+    loadContextUsage();
+    loadProjectInfo();
   });
 
   es.addEventListener('error', (e) => {
@@ -1193,11 +1876,10 @@ function connectSSE(sessionId) {
     try {
       const data = JSON.parse(e.data);
       errorMsg = data.message || errorMsg;
-      addDevEvent('error', data);
     } catch {}
     finalizeStreamingMessage();
+    finalizeToolInfo();
     removeStreamingIndicator();
-    removeCodeStreamingStatus();
     if (!messageStarted) {
       addMessage('assistant', `Error: ${errorMsg}`);
     }
@@ -1209,94 +1891,57 @@ function connectSSE(sessionId) {
 function executeCodeByIndex(btn, cardIndex) {
   const card = codeCards[cardIndex];
   if (!card) return;
-  executeCode(btn, card.id, card.code);
+  executeCode(btn, card.code, cardIndex);
 }
 
-async function executeCode(btn, msgId, code) {
+async function executeCode(btn, code, cardIndex) {
   btn.disabled = true;
   btn.textContent = 'Running...';
 
-  // Find message_index by id
-  let messageIndex = null;
-  try {
-    const res = await fetch('/api/messages');
-    const msgs = await res.json();
-    for (let i = 0; i < msgs.length; i++) {
-      if (msgs[i].id === msgId || (msgs[i].has_code && msgs[i].code === code)) {
-        messageIndex = i;
-        break;
-      }
-    }
-  } catch(e) {}
+  const block = btn.closest('.tool-block');
 
   try {
-    const body = messageIndex !== null
-      ? { message_index: messageIndex, code }
-      : { code };
     const res = await fetch('/api/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify({ code })
     });
     const data = await res.json();
     if (data.success) {
-      btn.className = 'code-btn btn-executed';
-      btn.innerHTML = '&#10003; Executed';
-      addMessage('assistant', '✅ Code executed successfully.' + (data.output ? `\n\`\`\`\n${data.output}\`\`\`` : ''));
+      _disableToolBlock(block, 'executed');
     } else {
-      btn.className = 'code-btn btn-failed';
+      btn.className = 'tool-btn btn-failed';
       btn.textContent = 'Failed';
       btn.title = data.error || 'Unknown error';
-      addMessage('assistant', '❌ Execution failed:\n```\n' + (data.error || 'Unknown error') + '\n```');
       setTimeout(() => {
-        btn.className = 'code-btn btn-execute';
+        btn.className = 'tool-btn btn-execute';
         btn.innerHTML = '&#9654; Execute';
         btn.disabled = false;
         btn.title = '';
       }, 5000);
     }
   } catch (err) {
-    btn.className = 'code-btn btn-failed';
+    btn.className = 'tool-btn btn-failed';
     btn.textContent = 'Error';
-    addMessage('assistant', '❌ Failed to reach Blender: ' + err.message);
     btn.disabled = false;
   }
+
+  // Re-enable chat input
+  codePendingAction = false;
+  setChatInputEnabled(true);
 }
 
 async function undoCode(btn) {
   try {
     await fetch('/api/undo', { method: 'POST' });
-    const card = btn.closest('.code-card');
-    if (card) {
-      const execBtn = card.querySelector('.btn-executed, .btn-failed');
-      if (execBtn) {
-        execBtn.className = 'code-btn btn-execute';
-        execBtn.innerHTML = '&#9654; Execute';
-        execBtn.disabled = false;
-        execBtn.title = '';
-      }
-    }
   } catch {}
-}
-
-function copyCodeCard(btn) {
-  const card = btn.closest('.code-card');
-  const code = card.querySelector('code');
-  navigator.clipboard.writeText(code.textContent).then(() => {
-    const orig = btn.innerHTML;
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.innerHTML = orig, 1500);
-  });
 }
 
 async function clearChat() {
   try {
     await fetch('/api/clear', { method: 'POST' });
     codeCards = [];
-    devEventLog = [];
     await loadMessages();
-    showPlaceholderIfEmpty();
-    if (devPaneVisible) renderAllDevEvents();
   } catch {}
 }
 
@@ -1305,22 +1950,21 @@ async function loadMessages() {
     const res = await fetch('/api/messages');
     const messages = await res.json();
     const chatContainer = document.getElementById('chatMessages');
-    const codeList = document.getElementById('codeList');
     chatContainer.innerHTML = '';
 
-    // Reset code pane — keep placeholder
-    codeList.innerHTML = '';
-    const ph = document.createElement('div');
-    ph.className = 'code-placeholder';
-    ph.id = 'codePlaceholder';
-    ph.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128196;</div><div class="empty-text">Generated code blocks will appear here</div></div>';
-    codeList.appendChild(ph);
+    // Reset code pane
+    activeCodeIndex = -1;
+    document.getElementById('codeViewer').classList.remove('active');
+    document.getElementById('codePlaceholder').style.display = '';
+    document.getElementById('copyCodeBtn').style.display = 'none';
     codeCards = [];
 
     if (Array.isArray(messages)) {
       for (const msg of messages) {
         if (msg.role === 'tool_status' && msg.has_code) {
-          addCodeCard(msg);
+          addToolBlock(msg);
+        } else if (msg.role === 'tool_info' && msg.content) {
+          addToolInfoStatic(msg.content);
         } else if (msg.role === 'assistant' && msg.content) {
           addMessage('assistant', msg.content);
         } else if (msg.role === 'user' && msg.content) {
@@ -1330,7 +1974,6 @@ async function loadMessages() {
     }
 
     scrollToBottomChat();
-    showPlaceholderIfEmpty();
   } catch (err) {
     console.error('Failed to load messages:', err);
   }
@@ -1348,6 +1991,17 @@ function selectAuthMode(btn) {
   btn.classList.add('selected');
   currentAuthMode = btn.dataset.mode;
   document.getElementById('apiKeyGroup').style.display = currentAuthMode === 'api_key' ? '' : 'none';
+}
+
+async function toggleAutoExecute(checkbox) {
+  autoExecuteEnabled = checkbox.checked;
+  try {
+    await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auto_execute: autoExecuteEnabled })
+    });
+  } catch(e) {}
 }
 
 async function saveSettings() {
@@ -1379,23 +2033,490 @@ async function loadSettings() {
     });
     document.getElementById('apiKeyGroup').style.display = currentAuthMode === 'api_key' ? '' : 'none';
     if (data.model) document.getElementById('modelSelect').value = data.model;
+    autoExecuteEnabled = data.auto_execute || false;
+    document.getElementById('autoExecuteToggle').checked = autoExecuteEnabled;
   } catch(e) {}
 }
 
-// ─── Developer Pane Toggle ───────────────────────────────
-function toggleDevPane() {
-  devPaneVisible = !devPaneVisible;
-  const pane = document.getElementById('paneDev');
-  const divider = document.getElementById('dividerCodeDev');
-  const btn = document.getElementById('devToggle');
+// ─── Chat Menu ───────────────────────────────────────────
+let chatMenuOpen = false;
 
-  pane.classList.toggle('visible', devPaneVisible);
-  divider.classList.toggle('visible', devPaneVisible);
-  btn.classList.toggle('active', devPaneVisible);
+function toggleChatMenu(e) {
+  e.stopPropagation();
+  chatMenuOpen = !chatMenuOpen;
+  document.getElementById('chatMenuDropdown').classList.toggle('open', chatMenuOpen);
+}
 
-  if (devPaneVisible) {
-    loadDevEvents();
-    renderAllDevEvents();
+function closeChatMenu() {
+  chatMenuOpen = false;
+  document.getElementById('chatMenuDropdown').classList.remove('open');
+}
+
+document.addEventListener('click', (e) => {
+  if (chatMenuOpen && !e.target.closest('.chat-menu-wrapper')) closeChatMenu();
+});
+
+async function downloadChat() {
+  try {
+    const [msgsRes, exportRes] = await Promise.all([
+      fetch('/api/messages'),
+      fetch('/api/chat/export'),
+    ]);
+    const messages = await msgsRes.json();
+    const exportData = await exportRes.json();
+
+    const date = new Date().toISOString().slice(0, 10);
+
+    // Build markdown
+    let md = `# Smoothie Chat — ${date}\n\n`;
+    for (const msg of messages) {
+      if (msg.role === 'user') {
+        md += `**You:** ${msg.content}\n\n`;
+      } else if (msg.role === 'assistant') {
+        md += `**Smoothie:** ${msg.content}\n\n`;
+      } else if (msg.role === 'tool_info' && msg.content) {
+        const info = _getToolInfo(msg.content);
+        md += `${info.icon} ${info.label}\n\n`;
+      } else if (msg.role === 'tool_status' && msg.has_code) {
+        md += `🔧 Code generated (${msg.code_bytes} bytes)\n`;
+        if (msg.code_executed) md += `✅ Executed\n`;
+        else if (msg.code_rejected) md += `❌ Rejected\n`;
+        md += `\`\`\`python\n${msg.code}\n\`\`\`\n\n`;
+      }
+    }
+
+    // Build JSONL
+    const jsonl = (exportData.messages || []).map(m => JSON.stringify(m)).join('\n');
+
+    // Create zip
+    const zip = new JSZip();
+    zip.file(`chat-${date}.md`, md);
+    zip.file(`chat-${date}.jsonl`, jsonl);
+    const blob = await zip.generateAsync({ type: 'blob' });
+
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `smoothie-chat-${date}.zip`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch(e) {
+    console.error('Download failed:', e);
+  }
+}
+
+async function printChat() {
+  try {
+    const [res, projRes, ctxRes] = await Promise.all([
+      fetch('/api/messages'),
+      fetch('/api/project-name'),
+      fetch('/api/context-usage'),
+    ]);
+    const messages = await res.json();
+    const projData = await projRes.json();
+    const ctxData = await ctxRes.json();
+
+    // Number code blocks
+    let codeNum = 0;
+    const codeBlocks = [];
+    for (const msg of messages) {
+      if (msg.role === 'tool_status' && msg.has_code && msg.code) {
+        codeNum++;
+        codeBlocks.push({
+          num: codeNum,
+          code: msg.code,
+          bytes: msg.code_bytes || msg.code.length,
+          executed: msg.code_executed || false,
+          rejected: msg.code_rejected || false,
+          autoExecuted: msg.auto_executed || false,
+        });
+      }
+    }
+
+    // Build chat HTML
+    let chatHtml = '';
+    let currentCode = 0;
+    for (const msg of messages) {
+      if (msg.role === 'user' && msg.content) {
+        chatHtml += `
+          <div class="message">
+            <div class="msg-header">
+              <div class="avatar user">&#128100;</div>
+              <span class="name">You</span>
+            </div>
+            <div class="msg-body user-body">${renderMarkdown(msg.content)}</div>
+          </div>`;
+      } else if (msg.role === 'assistant' && msg.content) {
+        chatHtml += `
+          <div class="message">
+            <div class="msg-header">
+              <div class="avatar assistant">&#127848;</div>
+              <span class="name">Smoothie</span>
+            </div>
+            <div class="msg-body assistant-body">${renderMarkdown(msg.content)}</div>
+          </div>`;
+      } else if (msg.role === 'tool_info' && msg.content) {
+        const info = _getToolInfo(msg.content);
+        if (info.isCode) continue;
+        chatHtml += `
+          <div class="tool-info-msg">
+            <span class="tool-info-icon">${info.icon}</span>
+            <span class="tool-info-label">${info.label}</span>
+          </div>`;
+      } else if (msg.role === 'tool_status' && msg.has_code) {
+        currentCode++;
+        const bytes = msg.code_bytes || (msg.code ? msg.code.length : 0);
+        const executed = msg.code_executed || false;
+        const autoExecuted = msg.auto_executed || false;
+        const rejected = msg.code_rejected || false;
+
+        let statusHtml = '';
+        if (executed || autoExecuted) {
+          statusHtml = `<span class="status-badge badge-success">${autoExecuted ? '&#10003; Auto-Executed' : '&#10003; Executed'}</span>`;
+        } else if (rejected) {
+          statusHtml = `<span class="status-badge badge-error">&#10007; Rejected</span>`;
+        } else {
+          statusHtml = `<span class="status-badge badge-pending">Pending</span>`;
+        }
+
+        chatHtml += `
+          <div class="tool-block">
+            <div class="tool-block-header">
+              <div class="tool-block-title">
+                <span class="code-num">${currentCode}</span>
+                &#128296; Code generated
+                <span class="tool-block-bytes">${bytes} bytes</span>
+              </div>
+            </div>
+            <div class="tool-block-actions">
+              ${statusHtml}
+              <span class="appendix-ref">See Appendix #${currentCode}</span>
+            </div>
+          </div>`;
+      }
+    }
+
+    // Build appendix HTML
+    let appendixHtml = '';
+    if (codeBlocks.length > 0) {
+      appendixHtml = `<div class="appendix"><h2 class="appendix-title">Appendix &mdash; Generated Code</h2>`;
+      for (const block of codeBlocks) {
+        let statusHtml = '';
+        if (block.executed || block.autoExecuted) {
+          statusHtml = `<span class="header-status status-success">${block.autoExecuted ? '&#10003; Auto-Executed' : '&#10003; Executed'}</span>`;
+        } else if (block.rejected) {
+          statusHtml = `<span class="header-status status-error">&#10007; Rejected</span>`;
+        }
+
+        const codeLines = block.code.split('\n');
+        const lineNums = codeLines.map((_, i) => `<span>${i + 1}</span>`).join('');
+        const highlighted = highlightPython(block.code);
+
+        appendixHtml += `
+          <div class="code-listing">
+            <div class="code-listing-header">
+              <div class="code-listing-title">
+                <span class="code-num">${block.num}</span>
+                Code Block #${block.num}
+                <span class="code-listing-bytes">${block.bytes} bytes</span>
+              </div>
+              ${statusHtml}
+            </div>
+            <div class="code-listing-body">
+              <pre><div class="line-numbers">${lineNums}</div><code>${highlighted}</code></pre>
+            </div>
+          </div>`;
+      }
+      appendixHtml += `</div>`;
+    }
+
+    // Open print window
+    const printWin = window.open('', '_blank');
+    printWin.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Smoothie Chat — ${new Date().toISOString().slice(0, 10)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --user-bubble: #0f3460;
+    --accent: #e94560;
+    --purple: #533483;
+    --text-primary: #e8e8e8;
+    --text-secondary: #a0a0b0;
+    --text-muted: #6b7280;
+    --code-bg: #0d1117;
+    --code-border: #30363d;
+    --success: #3fb950;
+    --error: #f85149;
+    --border: #2a2a4a;
+  }
+
+  html, body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  @media print {
+    html, body { background: var(--bg-primary) !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+    .print-toolbar { display: none !important; }
+    @page { margin: 10mm; }
+    .appendix { break-before: page; }
+  }
+
+  .print-toolbar {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 20px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+  }
+  .print-toolbar span { font-size: 13px; color: var(--text-secondary); }
+  .print-toolbar button {
+    padding: 6px 16px; border-radius: 6px; border: none;
+    background: var(--accent); color: white; font-family: inherit;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+  }
+  .print-toolbar button:hover { opacity: 0.9; }
+
+  /* Header bar */
+  .page-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 20px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .page-header .logo-icon {
+    width: 28px; height: 28px; background: var(--accent);
+    border-radius: 7px; display: flex; align-items: center;
+    justify-content: center; font-size: 15px; flex-shrink: 0;
+  }
+  .page-header .logo-text { font-size: 16px; font-weight: 600; }
+  .page-header .date { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+
+  .header-status-area {
+    display: flex; align-items: center; gap: 8px;
+    margin-left: 12px;
+    padding: 4px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    overflow: hidden; white-space: nowrap;
+    flex: 1; min-width: 0;
+  }
+  .header-status-label { color: var(--text-muted); flex-shrink: 0; }
+  .header-status-value { color: var(--text-secondary); flex-shrink: 0; }
+  .header-status-modified { color: var(--text-muted); font-style: italic; flex-shrink: 0; }
+  .header-dot {
+    width: 3px; height: 3px; border-radius: 50%;
+    background: var(--text-muted); flex-shrink: 0;
+  }
+  .header-context-bar {
+    width: 64px; height: 16px;
+    background: var(--code-bg);
+    border-radius: 4px; overflow: hidden;
+    position: relative;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .header-context-fill {
+    height: 100%; border-radius: 3px;
+    background: var(--purple);
+    min-width: 0;
+  }
+  .header-context-fill.warning { background: #c0392b; }
+  .header-context-text {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 600;
+    color: var(--text-primary);
+    text-shadow: 0 0 3px rgba(0,0,0,0.6);
+  }
+
+  .chat-content { padding: 0 20px 20px; max-width: 800px; }
+
+  /* Messages — matching the app UI */
+  .message { margin-bottom: 14px; }
+  .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 12px; font-weight: 500; }
+  .msg-header .name { color: var(--text-secondary); }
+  .avatar {
+    width: 22px; height: 22px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; flex-shrink: 0;
+  }
+  .avatar.user { background: var(--user-bubble); }
+  .avatar.assistant { background: var(--accent); }
+  .msg-body { padding-left: 30px; font-size: 14px; }
+  .msg-body.user-body {
+    background: var(--user-bubble); border-radius: 10px;
+    padding: 10px 14px; margin-left: 30px; max-width: 90%;
+  }
+  .msg-body p { margin-bottom: 6px; }
+  .msg-body p:last-child { margin-bottom: 0; }
+  .msg-body ul, .msg-body ol { margin: 6px 0; padding-left: 20px; }
+  .msg-body li { margin-bottom: 3px; }
+  .msg-body h1, .msg-body h2, .msg-body h3 { margin: 10px 0 4px; font-weight: 600; }
+  .msg-body h1 { font-size: 17px; }
+  .msg-body h2 { font-size: 15px; }
+  .msg-body h3 { font-size: 14px; }
+  .msg-body code:not(pre code) {
+    background: var(--code-bg); padding: 2px 5px; border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  }
+  .msg-body pre {
+    background: var(--code-bg); border: 1px solid var(--code-border);
+    border-radius: 6px; padding: 10px 12px; overflow-x: auto; margin: 6px 0;
+  }
+  .msg-body pre code {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.5;
+  }
+
+  /* Tool info */
+  .tool-info-msg {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 0 6px 30px; color: var(--text-muted); font-size: 12px;
+  }
+
+  /* Tool block in chat */
+  .tool-block {
+    background: var(--bg-secondary); border: 1px solid var(--code-border);
+    border-radius: 8px; margin: 8px 0 14px 30px; overflow: hidden; max-width: 90%;
+  }
+  .tool-block-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, var(--purple), #2d1b4e);
+    font-size: 12px; font-weight: 500;
+  }
+  .tool-block-title { display: flex; align-items: center; gap: 6px; color: var(--text-primary); }
+  .tool-block-bytes { color: rgba(255,255,255,0.6); font-size: 11px; }
+  .tool-block-actions {
+    padding: 8px 12px; display: flex; align-items: center;
+    justify-content: space-between; gap: 8px;
+  }
+
+  .code-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 5px;
+    background: var(--accent); color: white;
+    font-size: 11px; font-weight: 600; flex-shrink: 0;
+  }
+
+  .status-badge {
+    padding: 3px 10px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; color: white;
+  }
+  .badge-success { background: var(--success); }
+  .badge-error { background: var(--error); }
+  .badge-pending { background: rgba(255,255,255,0.1); color: var(--text-muted); }
+  .appendix-ref { font-size: 11px; color: var(--text-secondary); }
+
+  /* Appendix */
+  .appendix { padding: 0 20px 40px; max-width: 800px; }
+  .appendix-title {
+    font-size: 18px; font-weight: 600; color: var(--text-primary);
+    padding: 16px 0 12px; border-bottom: 1px solid var(--border); margin-bottom: 16px;
+  }
+
+  .code-listing { margin-bottom: 20px; border: 1px solid var(--code-border); border-radius: 8px; overflow: hidden; }
+  .code-listing-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, var(--purple), #2d1b4e);
+    font-size: 12px; font-weight: 500;
+  }
+  .code-listing-title { display: flex; align-items: center; gap: 6px; color: var(--text-primary); }
+  .code-listing-bytes { color: rgba(255,255,255,0.6); font-size: 11px; }
+  .header-status { font-size: 11px; font-weight: 600; }
+  .status-success { color: var(--success); }
+  .status-error { color: var(--error); }
+
+  .code-listing-body pre {
+    margin: 0; background: var(--code-bg); padding: 0; display: flex; min-height: 100%;
+  }
+  .code-listing-body .line-numbers {
+    padding: 12px 0; text-align: right; user-select: none;
+    color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; line-height: 1.5;
+    border-right: 1px solid var(--code-border); min-width: 36px; flex-shrink: 0;
+  }
+  .code-listing-body .line-numbers span { display: block; padding: 0 8px; }
+  .code-listing-body pre code {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    line-height: 1.5; padding: 12px; flex: 1; overflow-x: auto;
+  }
+</style>
+</head>
+<body>
+  <div class="print-toolbar">
+    <span>Preview your chat below, then print or save as PDF.</span>
+    <button onclick="window.print()">&#128424; Print / Save as PDF</button>
+  </div>
+  <div class="page-header">
+    <div class="logo-icon">&#127848;</div>
+    <div class="logo-text">Smoothie</div>
+    <div class="header-status-area">
+      <span class="header-status-label">Editing:</span>
+      <span class="header-status-value">${projData.filename || (projData.name ? projData.name + '.blend' : 'Untitled')}</span>
+      <span class="header-dot"></span>
+      <span class="header-status-value">${formatFileSize(projData.file_size)}</span>
+      <span class="header-dot"></span>
+      <span class="header-status-modified">${formatModifiedTime(projData.modified_time)}</span>
+      <span class="header-dot"></span>
+      <div class="header-context-bar">
+        <div class="header-context-fill${(ctxData.percent || 0) >= 65 ? ' warning' : ''}" style="width:${Math.min(ctxData.percent || 0, 100)}%"></div>
+        <div class="header-context-text">${Math.min(ctxData.percent || 0, 100)}%</div>
+      </div>
+    </div>
+    <div class="date">${new Date().toLocaleString()}</div>
+  </div>
+  <div class="chat-content">${chatHtml}</div>
+  ${appendixHtml}
+</body>
+</html>`);
+    printWin.document.close();
+  } catch(e) {
+    console.error('Print failed:', e);
+  }
+}
+
+// ─── Pane Toggles ────────────────────────────────────────
+let codePaneVisible = false;
+
+function toggleCodePane() {
+  codePaneVisible = !codePaneVisible;
+  document.getElementById('paneCode').classList.toggle('visible', codePaneVisible);
+  document.getElementById('dividerChatCode').classList.toggle('visible', codePaneVisible);
+  document.getElementById('codeToggle').classList.toggle('active', codePaneVisible);
+}
+
+function showCodePane() {
+  if (!codePaneVisible) {
+    codePaneVisible = true;
+    document.getElementById('paneCode').classList.add('visible');
+    document.getElementById('dividerChatCode').classList.add('visible');
+    document.getElementById('codeToggle').classList.add('active');
+  }
+}
+
+function hideCodePane() {
+  if (codePaneVisible) {
+    codePaneVisible = false;
+    document.getElementById('paneCode').classList.remove('visible');
+    document.getElementById('dividerChatCode').classList.remove('visible');
+    document.getElementById('codeToggle').classList.remove('active');
   }
 }
 
@@ -1469,10 +2590,8 @@ function scrollToBottomCode() {
 // ─── Resizable Dividers ──────────────────────────────────
 (function initDividers() {
   const dividerCC = document.getElementById('dividerChatCode');
-  const dividerCD = document.getElementById('dividerCodeDev');
   const paneChat = document.getElementById('paneChat');
   const paneCode = document.getElementById('paneCode');
-  const paneDev = document.getElementById('paneDev');
 
   let activeDivider = null;
   let startX = 0;
@@ -1494,7 +2613,6 @@ function scrollToBottomCode() {
   }
 
   dividerCC.addEventListener('mousedown', (e) => onMouseDown(e, paneChat, paneCode, dividerCC));
-  dividerCD.addEventListener('mousedown', (e) => onMouseDown(e, paneCode, paneDev, dividerCD));
 
   document.addEventListener('mousemove', (e) => {
     if (!activeDivider) return;
@@ -1528,9 +2646,319 @@ document.addEventListener('click', (e) => {
 });
 
 // ─── Init ────────────────────────────────────────────────
+let currentChatVersion = 0;
+
+// Reset UI state on page load
+isStreaming = false;
+codePendingAction = false;
+setChatInputEnabled(true);
+
+// Load project info
+function formatFileSize(bytes) {
+  if (!bytes) return '—';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+  return (bytes / 1073741824).toFixed(2) + ' GB';
+}
+
+function formatModifiedTime(timestamp) {
+  if (!timestamp) return '';
+  const now = Date.now() / 1000;
+  const diff = now - timestamp;
+  if (diff < 30) return '(modified just now)';
+  if (diff < 60) return '(modified ' + Math.floor(diff) + ' sec. ago)';
+  if (diff < 3600) return '(modified ' + Math.floor(diff / 60) + ' min. ago)';
+  if (diff < 7200) return '(modified 1 hr. ago)';
+  // Check if same day
+  const modDate = new Date(timestamp * 1000);
+  const today = new Date();
+  if (modDate.toDateString() === today.toDateString()) {
+    return '(modified at ' + modDate.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) + ')';
+  }
+  // Check if yesterday
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (modDate.toDateString() === yesterday.toDateString()) {
+    return '(modified yesterday)';
+  }
+  return '(modified ' + modDate.toLocaleDateString() + ')';
+}
+
+function updateProjectInfo(d) {
+  const filename = d.filename || (d.name ? d.name + '.blend' : 'Untitled');
+  document.getElementById('statusFilename').textContent = filename;
+  document.getElementById('statusFileSize').textContent = formatFileSize(d.file_size);
+  document.getElementById('statusModified').textContent = formatModifiedTime(d.modified_time);
+}
+
+function updateContextBar(percent) {
+  const fill = document.getElementById('contextBarFill');
+  const text = document.getElementById('contextBarText');
+  const tooltip = document.getElementById('contextBarTooltip');
+  percent = Math.min(Math.max(percent, 0), 100);
+  fill.style.width = percent + '%';
+  text.textContent = percent + '%';
+  if (percent >= 65) {
+    fill.classList.add('warning');
+    tooltip.textContent = 'Context window: ' + percent + '% used. Consider clearing chat to free up context.';
+  } else {
+    fill.classList.remove('warning');
+    tooltip.textContent = 'Context window: ' + percent + '% used.';
+  }
+}
+
+function loadProjectInfo() {
+  fetch('/api/project-name').then(r => r.json()).then(updateProjectInfo).catch(() => {});
+}
+
+function loadContextUsage() {
+  fetch('/api/context-usage').then(r => r.json()).then(d => {
+    updateContextBar(d.percent || 0);
+  }).catch(() => {});
+}
+
+let _lastProjectData = null;
+const _origUpdateProjectInfo = updateProjectInfo;
+updateProjectInfo = function(d) {
+  _lastProjectData = d;
+  _origUpdateProjectInfo(d);
+};
+
+loadProjectInfo();
+loadContextUsage();
+
+// Poll project info (name, size, modified time) and context usage every 5 seconds
+setInterval(() => {
+  loadProjectInfo();
+  loadContextUsage();
+}, 5000);
+
 loadSettings();
-loadMessages();
-loadDevEvents();
+loadMessages().then(async () => {
+  try {
+    const res = await fetch('/api/chat/version');
+    const data = await res.json();
+    currentChatVersion = data.version;
+  } catch {}
+});
+
+// Poll for chat version changes (handles file reload, external changes)
+setInterval(async () => {
+  if (isStreaming) return;
+  try {
+    const res = await fetch('/api/chat/version');
+    const data = await res.json();
+    if (data.version !== currentChatVersion) {
+      currentChatVersion = data.version;
+      await loadMessages();
+      await loadSettings();
+      loadProjectInfo();
+      loadContextUsage();
+    }
+  } catch {}
+}, 2000);
+</script>
+
+<!-- ═══ Library Modal ═════════════════════════════════════ -->
+<div class="lib-overlay" id="libOverlay" onclick="if(event.target===this)closeLibrary()">
+  <div class="lib-modal">
+    <div class="lib-modal-header">
+      <span class="lib-modal-title">Library Files</span>
+      <div class="lib-modal-actions">
+        <span class="lib-modal-status" id="libStatus"></span>
+        <button class="lib-new-btn" onclick="newLibraryFile()">+ New File</button>
+        <button class="notes-modal-close" onclick="closeLibrary()">&times;</button>
+      </div>
+    </div>
+    <div class="lib-modal-body">
+      <div class="lib-file-list" id="libFileList"></div>
+      <div class="lib-editor" id="libEditor">
+        <div class="lib-empty-state" id="libEditorEmpty">Select a file to edit</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let libAutoSaveTimer = null;
+let libActiveFile = null;
+
+async function openLibrary() {
+  document.getElementById('libOverlay').classList.add('open');
+  await refreshLibraryList();
+}
+
+function closeLibrary() {
+  if (libAutoSaveTimer) {
+    clearTimeout(libAutoSaveTimer);
+    libAutoSaveTimer = null;
+    saveLibraryFile();
+  }
+  document.getElementById('libOverlay').classList.remove('open');
+  libActiveFile = null;
+}
+
+async function refreshLibraryList() {
+  try {
+    const [libRes, notesRes] = await Promise.all([
+      fetch('/api/library', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' }),
+      fetch('/api/project-notes'),
+    ]);
+    const libData = await libRes.json();
+    const notesData = await notesRes.json();
+    const list = document.getElementById('libFileList');
+    const files = libData.data || [];
+
+    let html = '';
+
+    // Project notes (smoothie.md) always at top
+    const notesActive = libActiveFile === '__smoothie_md__';
+    const notesLabel = notesData.exists ? 'smoothie.md' : 'smoothie.md (create)';
+    const notesSize = notesData.exists ? `${notesData.content.length}b` : '';
+    html += `
+      <div class="lib-file-item ${notesActive ? 'active' : ''}" onclick="selectProjectNotes()">
+        <span>&#128221; ${notesLabel}</span>
+        <span class="lib-file-size">${notesSize}</span>
+      </div>
+    `;
+
+    if (files.length > 0) {
+      html += '<div style="border-top:1px solid var(--border)"></div>';
+      html += files.map(f => `
+        <div class="lib-file-item ${libActiveFile === f.name ? 'active' : ''}"
+             onclick="selectLibraryFile('${f.name.replace(/'/g, "\\'")}')">
+          <span>&#128230; ${f.name}</span>
+          <span class="lib-file-size">${f.size}b</span>
+          <button class="lib-file-delete" onclick="event.stopPropagation();deleteLibraryFile('${f.name.replace(/'/g, "\\'")}')">&times;</button>
+        </div>
+      `).join('');
+    }
+
+    list.innerHTML = html;
+  } catch(e) {}
+}
+
+async function selectProjectNotes() {
+  if (libAutoSaveTimer) {
+    clearTimeout(libAutoSaveTimer);
+    libAutoSaveTimer = null;
+    await saveLibraryFile();
+  }
+
+  libActiveFile = '__smoothie_md__';
+  try {
+    const res = await fetch('/api/project-notes');
+    const data = await res.json();
+    const editor = document.getElementById('libEditor');
+
+    if (!data.exists) {
+      // Create with template
+      const createRes = await fetch('/api/project-notes/create', { method: 'POST' });
+      const createData = await createRes.json();
+      editor.innerHTML = `<textarea id="libTextarea"
+        oninput="scheduleLibSave()"
+        placeholder="Write project notes...">${(createData.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>`;
+    } else {
+      editor.innerHTML = `<textarea id="libTextarea"
+        oninput="scheduleLibSave()"
+        placeholder="Write project notes...">${(data.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>`;
+    }
+    await refreshLibraryList();
+  } catch(e) {}
+}
+
+async function selectLibraryFile(name) {
+  if (libAutoSaveTimer) {
+    clearTimeout(libAutoSaveTimer);
+    libAutoSaveTimer = null;
+    await saveLibraryFile();
+  }
+
+  libActiveFile = name;
+  try {
+    const res = await fetch('/api/library/read', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name})
+    });
+    const data = await res.json();
+    const editor = document.getElementById('libEditor');
+    document.getElementById('libEditorEmpty')?.remove();
+    editor.innerHTML = `<textarea id="libTextarea"
+      oninput="scheduleLibSave()"
+      placeholder="Write Python code...">${(data.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>`;
+    await refreshLibraryList();
+  } catch(e) {}
+}
+
+function scheduleLibSave() {
+  if (libAutoSaveTimer) clearTimeout(libAutoSaveTimer);
+  document.getElementById('libStatus').textContent = 'Unsaved...';
+  libAutoSaveTimer = setTimeout(() => {
+    libAutoSaveTimer = null;
+    saveLibraryFile();
+  }, 1500);
+}
+
+async function saveLibraryFile() {
+  if (!libActiveFile) return;
+  const textarea = document.getElementById('libTextarea');
+  if (!textarea) return;
+  try {
+    if (libActiveFile === '__smoothie_md__') {
+      await fetch('/api/project-notes', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({content: textarea.value})
+      });
+    } else {
+      await fetch('/api/library/write', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({name: libActiveFile, content: textarea.value})
+      });
+    }
+    document.getElementById('libStatus').textContent = 'Saved';
+    setTimeout(() => {
+      const el = document.getElementById('libStatus');
+      if (el && el.textContent === 'Saved') el.textContent = '';
+    }, 2000);
+  } catch(e) {
+    document.getElementById('libStatus').textContent = 'Save failed';
+  }
+}
+
+async function newLibraryFile() {
+  const name = prompt('File name (e.g. physics.py):');
+  if (!name) return;
+  const fname = name.endsWith('.py') ? name : name + '.py';
+  try {
+    await fetch('/api/library/write', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name: fname, content: '# ' + fname + '\n\n'})
+    });
+    await refreshLibraryList();
+    await selectLibraryFile(fname);
+  } catch(e) {}
+}
+
+async function deleteLibraryFile(name) {
+  if (!confirm(`Delete "${name}"?`)) return;
+  try {
+    await fetch('/api/library/delete', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name})
+    });
+    if (libActiveFile === name) {
+      libActiveFile = null;
+      document.getElementById('libEditor').innerHTML = '<div class="lib-empty-state">Select a file to edit</div>';
+    }
+    await refreshLibraryList();
+  } catch(e) {}
+}
 </script>
 </body>
 </html>

@@ -55,6 +55,11 @@ if _HAS_BPY:
             layout.prop(self, "sidecar_python")
 
 
+_pending_reload = False
+_startup_retries = 0
+_MAX_STARTUP_RETRIES = 5
+
+
 def register():
     if not _HAS_BPY:
         return
@@ -68,8 +73,34 @@ def register():
 
     register_properties()
 
-    # Deferred startup: start blender_api server + sidecar
+    # Notify sidecar when a file is loaded so it can restore chat
+    def _on_file_loaded(*args):
+        global _pending_reload
+        from .sidecar_launcher import is_running
+        if not is_running():
+            # Sidecar not ready yet — deferred startup will handle reload
+            _pending_reload = True
+            return
+        import threading
+        import urllib.request
+        def _notify():
+            try:
+                req = urllib.request.Request(
+                    "http://localhost:8888/api/reload",
+                    method="POST",
+                    headers={"Content-Type": "application/json"},
+                    data=b"{}",
+                )
+                urllib.request.urlopen(req, timeout=5)
+            except Exception:
+                pass
+        threading.Thread(target=_notify, daemon=True).start()
+
+    bpy.app.handlers.load_post.append(_on_file_loaded)
+
+    # Deferred startup: start blender_api server + sidecar (with retry)
     def _deferred_startup():
+        global _pending_reload, _startup_retries
         import traceback
 
         try:
@@ -87,6 +118,29 @@ def register():
                 if sidecar_port:
                     print(f"[Smoothie] Sidecar started on http://localhost:{sidecar_port}")
                     print(f"[Smoothie] Blender API on http://127.0.0.1:{blender_port}")
+                    # Redraw N-panel so status updates from "Not running" to green
+                    for window in bpy.context.window_manager.windows:
+                        for area in window.screen.areas:
+                            if area.type == 'VIEW_3D':
+                                area.tag_redraw()
+                    # If a file was already loaded before sidecar was ready, trigger reload
+                    if _pending_reload:
+                        _pending_reload = False
+                        import threading
+                        import urllib.request
+                        def _do_reload():
+                            try:
+                                req = urllib.request.Request(
+                                    f"http://localhost:{sidecar_port}/api/reload",
+                                    method="POST",
+                                    headers={"Content-Type": "application/json"},
+                                    data=b"{}",
+                                )
+                                urllib.request.urlopen(req, timeout=5)
+                            except Exception:
+                                pass
+                        threading.Timer(1.5, _do_reload).start()
+                    return None  # Success — don't repeat
                 else:
                     print("[Smoothie] WARNING: Sidecar failed to start (is system Python with claude_agent_sdk available?)")
             else:
@@ -95,9 +149,15 @@ def register():
         except Exception:
             print(f"[Smoothie] ERROR during startup:\n{traceback.format_exc()}")
 
-        return None  # Don't repeat
+        # Retry on failure
+        _startup_retries += 1
+        if _startup_retries < _MAX_STARTUP_RETRIES:
+            print(f"[Smoothie] Retrying startup ({_startup_retries}/{_MAX_STARTUP_RETRIES})...")
+            return 2.0  # Retry in 2 seconds
+        print("[Smoothie] Giving up after max retries")
+        return None
 
-    bpy.app.timers.register(_deferred_startup, first_interval=1.0)
+    bpy.app.timers.register(_deferred_startup, first_interval=1.0, persistent=True)
 
 
 def unregister():
@@ -107,6 +167,11 @@ def unregister():
     from .ui.properties import unregister_properties
     from .ui.operators import classes as operator_classes
     from .ui.panel import classes as panel_classes
+
+    # Remove load_post handler
+    for fn in list(bpy.app.handlers.load_post):
+        if getattr(fn, '__name__', '') == '_on_file_loaded':
+            bpy.app.handlers.load_post.remove(fn)
 
     # Stop sidecar
     from .sidecar_launcher import stop_sidecar

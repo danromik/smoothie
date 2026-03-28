@@ -52,6 +52,47 @@ async def undo() -> dict:
         return {"success": False, "error": str(e)}
 
 
+async def save_session_id(session_id: str) -> dict:
+    """Save SDK session ID to Blender's text data block."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{_base_url()}/api/session/save",
+                json={"session_id": session_id},
+            )
+            return resp.json()
+    except Exception as e:
+        logger.warning("Failed to save session ID to Blender: %s", e)
+        return {"success": False, "error": str(e)}
+
+
+async def load_session_id() -> str:
+    """Load SDK session ID from Blender's text data block."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{_base_url()}/api/session/load")
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("session_id", "")
+    except Exception as e:
+        logger.warning("Failed to load session ID from Blender: %s", e)
+        return ""
+
+
+async def query_blender(endpoint: str, data: dict | None = None, method: str = "POST") -> dict:
+    """Generic Blender API query. Returns the JSON response."""
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            if method == "GET":
+                resp = await client.get(f"{_base_url()}{endpoint}")
+            else:
+                resp = await client.post(f"{_base_url()}{endpoint}", json=data or {})
+            return resp.json()
+    except Exception as e:
+        logger.warning("Blender query %s failed: %s", endpoint, e)
+        return {"success": False, "error": str(e)}
+
+
 async def get_status() -> dict:
     """Check Blender API status."""
     try:
