@@ -1,5 +1,7 @@
 # Smoothie — AI-Powered Animation Add-on for Blender
 
+> Architecture and conventions reference. Named `CLAUDE.md` so [Claude Code](https://claude.com/claude-code) picks it up automatically when working in this repo; contributors can read it as a general orientation doc.
+
 ## Project Overview
 
 Smoothie is a Blender add-on that lets users create animations via natural language prompts. The Claude Agent SDK interprets user intent, generates `bpy` Python code, and the user approves or rejects execution within Blender — providing an agentic prompt-to-animation workflow. The user interacts with the AI assistant ("Smoothie") through a browser-based UI served from localhost.
@@ -69,6 +71,9 @@ smoothie/
 logs/
 ├── smoothie.log             # Blender-side log (appended)
 └── sidecar.log              # Sidecar process log (overwritten each launch)
+sample_project/              # Example video + chat transcript bundled with releases
+├── space_battle.mp4         # Rendered sample animation
+└── space_battle_chat.pdf    # Printed chat transcript that produced it
 tests/
 ├── scripts/
 │   ├── test_script.py       # Integration test (auto-triggered by watcher)
@@ -173,14 +178,6 @@ Exports a `.zip` containing:
 Opens a print-optimized view in a new browser window, styled to match the app UI (dark theme, message bubbles, tool info rows, code generation blocks). Code blocks are numbered inline with execution status, and full code listings with line numbers and syntax highlighting appear in an appendix. Uses the browser's native `window.print()` — the user can print or save as PDF via the OS print dialog.
 
 ## Development Workflow
-
-### Dual-Claude Setup
-
-| | **Docker Claude** | **Mac Claude** |
-|---|---|---|
-| **Runs in** | Docker container | macOS host |
-| **Permissions** | `--dangerously-skip-permissions` | Normal (user-approved) |
-| **Role** | Primary development — writing code, refactoring, tests | Testing in Blender, system operations |
 
 ### Prerequisites
 1. **Project venv** with `claude-agent-sdk` installed

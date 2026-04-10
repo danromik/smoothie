@@ -9,7 +9,7 @@ Watches test_script.py in the same directory. On each change:
   2. Writes combined stdout+stderr to test_results.txt
   3. Prints a summary to the terminal
 
-The results file is in the same directory so Docker Claude can read it.
+The results file is written to the same directory for easy inspection.
 Press Ctrl+C to stop.
 """
 

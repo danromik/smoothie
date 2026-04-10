@@ -2,6 +2,8 @@
 
 **AI-powered animation for Blender using natural language.**
 
+*Free software released under the [GNU General Public License v3.0 or later](LICENSE).*
+
 Smoothie is a Blender add-on that lets you create animations by describing what you want in plain English. Type a prompt like *"make the cube bounce across the scene"* and Smoothie generates the Python code, shows it to you for review, and executes it in Blender with a single click.
 
 ## How It Works
@@ -26,6 +28,15 @@ Smoothie uses the [Claude Agent SDK](https://docs.anthropic.com/en/docs/agents-a
 - **Sandboxed execution**: AST validation blocks dangerous imports; every execution has undo support
 - **Settings persistence**: Model choice, auth mode, and preferences persist across sessions
 - **Chat export**: Download conversations as markdown + JSONL archives, or print/save as PDF with a styled print view
+
+## Sample Project
+
+The `sample_project/` folder contains a worked example showing what Smoothie can produce:
+
+- **`space_battle.mp4`** — a short animated space battle scene rendered in Blender, built from scratch through a natural-language conversation with Smoothie.
+- **`space_battle_chat.pdf`** — the full printed transcript of the Smoothie chat session that produced the video, including every prompt, every code generation block, and the iterative back-and-forth.
+
+Read the chat transcript alongside the video to see how an end-to-end Smoothie workflow actually unfolds — from initial description through scene exploration, code generation, refinement, and final render.
 
 ## Interface
 
@@ -121,10 +132,13 @@ smoothie/
   executor/             # Sandboxed code runner with persistent namespace and undo
   ai/                   # Scene context queries and system prompt
   ui/                   # Blender sidebar panel and operators
+sample_project/         # Example video + chat transcript showing Smoothie in action
 tests/
   scripts/              # Unit tests and integration test framework
 ```
 
 ## License
 
-MIT
+Smoothie is free software, released under the [GNU General Public License v3.0 or later](LICENSE) — the same copyleft license as Blender itself. This matches the [Blender Foundation's guidance](https://www.blender.org/about/license/) that Python add-ons using `bpy` are considered derivative works of Blender and should be distributed under a GPL-compatible license.
+
+You are free to use, modify, and redistribute Smoothie, including for commercial purposes, provided that any derivative work you distribute is also released under the GPL. See the [`LICENSE`](LICENSE) file for the full license text.

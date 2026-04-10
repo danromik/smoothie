@@ -22,6 +22,7 @@ tests/results/
 
 # Claude Code / dev environment
 .claude/
+CLAUDE.local.md
 docker-claude-settings.json
 docker-entrypoint.sh
 run-claude.sh
