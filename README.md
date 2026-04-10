@@ -6,6 +6,13 @@
 
 Smoothie is a Blender add-on that lets you create animations by describing what you want in plain English. Type a prompt like *"make the cube bounce across the scene"* and Smoothie generates the Python code, shows it to you for review, and executes it in Blender with a single click.
 
+<table>
+  <tr>
+    <td width="50%"><img src="assets/smoothie-chat.png" alt="Smoothie chat session"></td>
+    <td width="50%"><img src="assets/smoothie-demo.gif" alt="Smoothie animation demo"></td>
+  </tr>
+</table>
+
 ## How It Works
 
 1. Open the Smoothie chat in your browser from Blender's sidebar
