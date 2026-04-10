@@ -59,12 +59,29 @@ The browser-based UI (served at `localhost:8888`) has:
 
 - **Blender 5.1+**
 - **Python 3.10+** installed on your system (separate from Blender's embedded Python)
-- **Claude Code CLI** installed and logged in, *or* an Anthropic API key
+- **[Claude Code CLI](https://claude.com/claude-code)** — required; Smoothie's AI backend wraps it
+- **Credentials for Claude** — either a [Claude Pro or Max subscription](https://claude.com/pricing) *or* an [Anthropic API key](https://console.anthropic.com/)
 - **BlenderKit** (optional) — for searching and importing assets from the BlenderKit catalog
 
 ## Installation
 
-### 1. Set up the Python environment
+### Quick install (recommended)
+
+Once you have the prerequisites listed above, run the installer script from the project root:
+
+```bash
+python3 install.py
+```
+
+It checks prerequisites, creates the Python virtual environment, installs the Claude Code CLI, and copies the Smoothie add-on into your Blender add-ons folder — all in one step. If anything is missing, it tells you exactly what to install and where to get it.
+
+When the installer finishes, you still need to do **Step 3: Authenticate with Claude** (below) and enable the add-on inside Blender (covered at the end of Step 4). Those are the two things the installer can't automate for you.
+
+### Manual installation
+
+If the installer doesn't work for your setup, follow these steps.
+
+#### Step 1: Set up the Python environment
 
 Smoothie's AI backend runs in a sidecar process using your system Python. Create a virtual environment in the project root:
 
@@ -74,15 +91,39 @@ python3 -m venv .venv
 .venv/bin/pip install claude-agent-sdk
 ```
 
-### 2. Install the Claude Code CLI (for subscription auth)
+#### Step 2: Install the Claude Code CLI
+
+Smoothie talks to Claude through the [Claude Code CLI](https://claude.com/claude-code) (via the Claude Agent SDK). The CLI is required regardless of which authentication mode you use. Install it globally with npm:
 
 ```bash
 npm install -g @anthropic-ai/claude-code
 ```
 
-Skip this if you plan to use an API key instead.
+#### Step 3: Authenticate with Claude
 
-### 3. Install the add-on in Blender
+Smoothie supports two authentication modes, switchable from the Settings dropdown in the web UI after you launch the add-on.
+
+**Option A — Claude subscription** *(recommended if you already have Claude Pro or Max)*
+
+Run this in your terminal once:
+
+```bash
+claude login
+```
+
+It opens a browser window where you sign in to your Claude account. Your [subscription](https://claude.com/pricing) covers Smoothie's usage the same way it covers conversations at claude.ai — no per-message cost. In Smoothie's Settings, leave the auth mode on **Claude Code Subscription** (the default).
+
+**Option B — Anthropic API key** *(pay-per-use)*
+
+1. Sign up or log in at [console.anthropic.com](https://console.anthropic.com/)
+2. Go to **Settings → API Keys** and create a new key (it starts with `sk-ant-...`)
+3. In Smoothie's Settings, switch the auth mode to **API Key** and paste your key
+
+With this mode you're billed per API request based on token usage — see [Anthropic's API pricing](https://www.anthropic.com/pricing) for rates.
+
+**Not sure which to pick?** If you already have a Claude subscription, Option A is the simplest and has no extra cost. If you don't, Option B lets you try Smoothie without committing to a monthly plan — a short conversation typically costs pennies. You can switch between modes at any time.
+
+#### Step 4: Install the add-on in Blender
 
 Symlink the `smoothie/` package directory into Blender's add-ons folder:
 

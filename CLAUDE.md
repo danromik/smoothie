@@ -68,6 +68,7 @@ smoothie/
 └── libs/                    # Empty (sidecar uses system Python)
 
 # At the project root:
+install.py                   # Cross-platform installer (prereqs, venv, CLI, add-on)
 logs/
 ├── smoothie.log             # Blender-side log (appended)
 └── sidecar.log              # Sidecar process log (overwritten each launch)

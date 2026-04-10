@@ -11,6 +11,9 @@ build/
 # Virtual environment
 .venv/
 
+# Installer-generated pointer to the sidecar venv
+smoothie/venv_path.txt
+
 # Logs
 logs/
 

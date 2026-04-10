@@ -102,18 +102,38 @@ def _find_system_python() -> str | None:
     """
     import platform
 
-    # Check for a .venv in the project directory first
-    # Use realpath to resolve symlinks (Blender add-on may be symlinked)
+    # Resolve the real on-disk location of this file (follow symlinks).
     pkg_dir = os.path.dirname(os.path.realpath(__file__))
-    project_root = os.path.dirname(pkg_dir)  # parent of smoothie/
+
+    candidates = []
+
+    # Highest priority: venv_path.txt written by install.py. This is the
+    # only reliable way to find the venv when the add-on was copied into
+    # Blender's addons folder (rather than symlinked), because in that
+    # case there's no .venv alongside the copied package.
+    venv_config = os.path.join(pkg_dir, "venv_path.txt")
+    if os.path.isfile(venv_config):
+        try:
+            with open(venv_config, "r") as f:
+                configured = f.read().strip()
+            if configured and os.path.isfile(configured):
+                candidates.append(configured)
+                logger.info("Using Python from venv_path.txt: %s", configured)
+            else:
+                logger.warning("venv_path.txt points to non-existent file: %s", configured)
+        except Exception as e:
+            logger.warning("Failed to read venv_path.txt: %s", e)
+
+    # Next: look for a .venv alongside the smoothie/ package (classic
+    # symlinked-dev-install layout).
+    project_root = os.path.dirname(pkg_dir)
     venv_python = os.path.join(project_root, ".venv", "bin", "python3")
     if platform.system() == "Windows":
         venv_python = os.path.join(project_root, ".venv", "Scripts", "python.exe")
-
-    # Start with PATH-based candidates
-    candidates = []
     if os.path.isfile(venv_python):
         candidates.append(venv_python)
+
+    # Finally: fall back to any system Python that has the SDK installed.
     candidates.extend(["python3", "python3.13", "python3.12", "python3.11"])
 
     if platform.system() == "Darwin":
