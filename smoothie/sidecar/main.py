@@ -29,6 +29,10 @@ def main():
             logging.FileHandler(log_file, mode="w"),
         ],
     )
+    # Silence overly chatty third-party loggers — httpcore/httpx emit
+    # ~10-20 DEBUG lines per request, which floods the log with noise.
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     logger = logging.getLogger("smoothie.sidecar")
     logger.info("Starting sidecar on port %d, blender_port=%d (log: %s)", args.port, args.blender_port, log_file)
 

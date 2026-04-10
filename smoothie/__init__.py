@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Smoothie",
-    "author": "Smoothie Team",
-    "version": (0, 2, 0),
+    "author": "Dan Romik",
+    "version": (0, 99, 0),
     "blender": (5, 1, 0),
     "location": "View3D > Sidebar > Smoothie",
     "description": "AI-powered animation generation via natural language prompts",

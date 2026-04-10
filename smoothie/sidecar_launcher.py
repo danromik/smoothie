@@ -44,9 +44,14 @@ def start_sidecar(blender_port: int, sidecar_port: int = 8888) -> int | None:
     env["PYTHONPATH"] = pkg_parent + (os.pathsep + existing_pythonpath if existing_pythonpath else "")
 
     try:
+        # stdout/stderr must NOT be PIPE: the sidecar writes to these via
+        # Python logging, and nothing reads the pipes until the process
+        # exits. On macOS the ~64KB pipe buffer fills quickly, which blocks
+        # the next log write and freezes uvicorn's event loop. The sidecar
+        # already logs to logs/sidecar.log, so DEVNULL is fine here.
         _process = subprocess.Popen(
             cmd, env=env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
         _sidecar_port = sidecar_port
 
@@ -224,11 +229,20 @@ def _monitor_sidecar():
     proc = _process
     returncode = proc.wait()
     if returncode != 0:
-        stderr = ""
+        # Read tail of sidecar.log for diagnostics (stdout/stderr are DEVNULL).
+        tail = ""
         try:
-            stderr = proc.stderr.read().decode("utf-8", errors="replace") if proc.stderr else ""
+            pkg_dir = os.path.dirname(os.path.realpath(__file__))
+            project_root = os.path.dirname(pkg_dir)
+            log_file = os.path.join(project_root, "logs", "sidecar.log")
+            if os.path.isfile(log_file):
+                with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                    f.seek(0, 2)
+                    size = f.tell()
+                    f.seek(max(0, size - 2000))
+                    tail = f.read()
         except Exception:
             pass
-        logger.error("Sidecar exited with code %d: %s", returncode, stderr[:500])
+        logger.error("Sidecar exited with code %d. Last log lines:\n%s", returncode, tail)
     else:
         logger.info("Sidecar exited normally")

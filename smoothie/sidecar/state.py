@@ -16,7 +16,7 @@ logger = logging.getLogger("smoothie.sidecar.state")
 class Settings:
     blender_port: int = 0
     api_key: str = ""
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "claude-opus-4-6"
     auth_mode: str = "subscription"
     auto_execute: bool = False
 
@@ -32,6 +32,7 @@ class ChatMessage:
     code_executed: bool = False
     code_rejected: bool = False
     code_bytes: int = 0
+    tool_detail: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -44,6 +45,7 @@ class ChatMessage:
             "code_executed": self.code_executed,
             "code_rejected": self.code_rejected,
             "code_bytes": self.code_bytes,
+            "tool_detail": self.tool_detail,
         }
 
 @dataclass
@@ -120,7 +122,7 @@ def load_settings() -> None:
         logger.warning("Failed to load settings: %s", e)
 
 
-def init(blender_port: int, api_key: str = "", model: str = "claude-sonnet-4-20250514") -> None:
+def init(blender_port: int, api_key: str = "", model: str = "claude-opus-4-6") -> None:
     """Configure sidecar settings."""
     settings.blender_port = blender_port
     # Load persisted settings first

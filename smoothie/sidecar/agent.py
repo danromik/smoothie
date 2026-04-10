@@ -45,6 +45,36 @@ from .tools import (
 
 logger = logging.getLogger("smoothie.sidecar.agent")
 
+# Map tool name suffix → argument key to extract for contextual tool info messages.
+_TOOL_DETAIL_KEY = {
+    "read_object": "name",
+    "read_animation": "name",
+    "list_objects": "type_filter",
+    "read_hierarchy": "name",
+    "search_objects": "query",
+    "search_by_material": "material",
+    "read_library_file": "name",
+    "write_library_file": "name",
+    "delete_library_file": "name",
+    "search_assets": "query",
+    "import_asset": "asset_name",
+    "search_blenderkit": "keywords",
+}
+
+
+def _extract_tool_detail(tool_name: str, json_parts: list[str]) -> str:
+    """Extract the key argument value from accumulated tool JSON for display."""
+    suffix = tool_name.rsplit("__", 1)[-1] if "__" in tool_name else tool_name
+    arg_key = _TOOL_DETAIL_KEY.get(suffix)
+    if not arg_key:
+        return ""
+    try:
+        input_data = json.loads("".join(json_parts))
+        value = input_data.get(arg_key, "")
+        return str(value) if value else ""
+    except (json.JSONDecodeError, TypeError):
+        return ""
+
 # System prompt imported from existing ai module.
 # The sidecar runs via `python -m smoothie.sidecar.main` with PYTHONPATH set
 # to include the smoothie package parent directory.
@@ -391,15 +421,17 @@ def _handle_stream_event(message: StreamEvent, sse_queue: asyncio.Queue, session
                 _finalize_tool(tool_info, sse_queue, "content_block_stop")
             else:
                 # Non-code tool: store in conversation and emit tool_complete
+                detail = _extract_tool_detail(tool_info["name"], tool_info["json_parts"])
                 msg = state.ChatMessage(
                     id=state.new_message_id(),
                     role="tool_info",
                     content=tool_info["name"],
+                    tool_detail=detail,
                 )
                 state.conversation.messages.append(msg)
                 sse_queue.put_nowait({
                     "type": "tool_complete",
-                    "data": {"name": tool_info["name"], "id": tool_info["id"]},
+                    "data": {"name": tool_info["name"], "id": tool_info["id"], "detail": detail},
                 })
 
     elif event_type == "message_stop":

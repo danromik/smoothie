@@ -12,7 +12,7 @@ from starlette.responses import HTMLResponse, JSONResponse, StreamingResponse
 from starlette.routing import Route
 
 from . import state
-from .agent import reset_client, stream_chat
+from .agent import _extract_tool_detail, reset_client, stream_chat
 from .blender_proxy import execute_code, get_scene_context, get_status, load_session_id, query_blender, undo
 
 logger = logging.getLogger("smoothie.sidecar.app")
@@ -96,10 +96,15 @@ def _restore_messages_from_sdk(session_id: str) -> int:
             elif block_type == "tool_use" and block.get("name", ""):
                 # Non-code tool use — restore as tool_info message
                 tool_name = block["name"]
+                tool_detail = _extract_tool_detail(
+                    tool_name,
+                    [json.dumps(block.get("input", {}))],
+                )
                 msg = state.ChatMessage(
                     id=state.new_message_id(),
                     role="tool_info",
                     content=tool_name,
+                    tool_detail=tool_detail,
                 )
                 state.conversation.messages.append(msg)
                 count += 1
