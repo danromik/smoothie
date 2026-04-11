@@ -17,8 +17,14 @@ smoothie/venv_path.txt
 # Logs
 logs/
 
+# Throwaway scratch files (commit messages, one-off scripts, notes)
+tmp/
+
 # Test results
 tests/results/
+
+# Smoothie Studio scaffold staging (moved out to a sibling directory by the maintainer)
+_smoothie_studio_scaffold/
 
 # pytest
 .pytest_cache/

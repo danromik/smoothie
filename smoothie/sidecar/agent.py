@@ -151,6 +151,19 @@ async def ensure_client() -> ClaudeSDKClient:
         import_blenderkit_asset,
     ]
 
+    # Layered products (e.g. Smoothie Studio) register extra tools via
+    # smoothie.sidecar.factory.build_agent_app(). If none were registered,
+    # this is a no-op and the baseline tool list is used.
+    try:
+        from smoothie.sidecar.factory import get_extra_tools
+        extra_tools = get_extra_tools()
+    except Exception as e:
+        logger.warning("Could not load extra tools from factory: %s", e)
+        extra_tools = []
+    if extra_tools:
+        logger.info("Appending %d extra tools from factory", len(extra_tools))
+        all_tools.extend(extra_tools)
+
     server = create_sdk_mcp_server(
         name="smoothie",
         tools=all_tools,
@@ -162,34 +175,43 @@ async def ensure_client() -> ClaudeSDKClient:
 
     system_prompt = await _build_system_prompt()
 
+    allowed_tools = [
+        "mcp__smoothie__generate_blender_code",
+        "mcp__smoothie__read_scene",
+        "mcp__smoothie__read_object",
+        "mcp__smoothie__read_animation",
+        "mcp__smoothie__list_objects",
+        "mcp__smoothie__read_hierarchy",
+        "mcp__smoothie__search_objects",
+        "mcp__smoothie__search_by_material",
+        "mcp__smoothie__read_materials",
+        "mcp__smoothie__read_render_settings",
+        "mcp__smoothie__read_timeline",
+        "mcp__smoothie__read_project_notes",
+        "mcp__smoothie__update_project_notes",
+        "mcp__smoothie__list_library_files",
+        "mcp__smoothie__read_library_file",
+        "mcp__smoothie__write_library_file",
+        "mcp__smoothie__delete_library_file",
+        "mcp__smoothie__list_asset_libraries",
+        "mcp__smoothie__search_assets",
+        "mcp__smoothie__import_asset",
+        "mcp__smoothie__check_blenderkit",
+        "mcp__smoothie__search_blenderkit",
+        "mcp__smoothie__import_blenderkit_asset",
+    ]
+    # Append extra tools registered via build_agent_app(). The SDK uses
+    # the decorated function's __name__ to route tool calls, so we
+    # construct the mcp__smoothie__<name> entry from that.
+    for tool_fn in extra_tools:
+        tool_name = getattr(tool_fn, "__name__", None)
+        if tool_name:
+            allowed_tools.append(f"mcp__smoothie__{tool_name}")
+
     options = ClaudeAgentOptions(
         system_prompt=system_prompt,
         mcp_servers={"smoothie": server},
-        allowed_tools=[
-            "mcp__smoothie__generate_blender_code",
-            "mcp__smoothie__read_scene",
-            "mcp__smoothie__read_object",
-            "mcp__smoothie__read_animation",
-            "mcp__smoothie__list_objects",
-            "mcp__smoothie__read_hierarchy",
-            "mcp__smoothie__search_objects",
-            "mcp__smoothie__search_by_material",
-            "mcp__smoothie__read_materials",
-            "mcp__smoothie__read_render_settings",
-            "mcp__smoothie__read_timeline",
-            "mcp__smoothie__read_project_notes",
-            "mcp__smoothie__update_project_notes",
-            "mcp__smoothie__list_library_files",
-            "mcp__smoothie__read_library_file",
-            "mcp__smoothie__write_library_file",
-            "mcp__smoothie__delete_library_file",
-            "mcp__smoothie__list_asset_libraries",
-            "mcp__smoothie__search_assets",
-            "mcp__smoothie__import_asset",
-            "mcp__smoothie__check_blenderkit",
-            "mcp__smoothie__search_blenderkit",
-            "mcp__smoothie__import_blenderkit_asset",
-        ],
+        allowed_tools=allowed_tools,
         model=state.settings.model or None,
         include_partial_messages=True,
         max_turns=50,

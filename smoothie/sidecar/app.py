@@ -17,7 +17,9 @@ from .blender_proxy import execute_code, get_scene_context, get_status, load_ses
 
 logger = logging.getLogger("smoothie.sidecar.app")
 
-_FRONTEND_PATH = os.path.join(os.path.dirname(__file__), "frontend.html")
+# Baseline frontend path, preserved as a fallback. Layered products (e.g.
+# Smoothie Studio) override the served path via smoothie.sidecar.factory.
+_BASELINE_FRONTEND_PATH = os.path.join(os.path.dirname(__file__), "frontend.html")
 
 # The MCP-prefixed tool name used by the SDK
 _CODE_TOOL = "mcp__smoothie__generate_blender_code"
@@ -133,9 +135,20 @@ def _restore_messages_from_sdk(session_id: str) -> int:
 
 
 async def homepage(request: Request) -> HTMLResponse:
-    """Serve the frontend HTML."""
+    """Serve the frontend HTML.
+
+    The path is resolved via smoothie.sidecar.factory.get_frontend_path()
+    so layered products can override the served file without touching
+    this handler.
+    """
     try:
-        with open(_FRONTEND_PATH, "r", encoding="utf-8") as f:
+        from smoothie.sidecar.factory import get_frontend_path
+        path = get_frontend_path()
+    except Exception:
+        path = _BASELINE_FRONTEND_PATH
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
             html = f.read()
     except FileNotFoundError:
         html = (

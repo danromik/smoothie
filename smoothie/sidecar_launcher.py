@@ -11,6 +11,33 @@ _process: subprocess.Popen | None = None
 _sidecar_port: int | None = None
 
 
+def _find_sidecar_module() -> str:
+    """Return the Python module name to launch as the sidecar.
+
+    Defaults to ``smoothie.sidecar.main``. Can be overridden by writing
+    a module name into ``sidecar_module.txt`` next to this file —
+    e.g. ``studio_sidecar.main`` for a Smoothie Studio installation
+    that wants the add-on to launch Studio's extended sidecar instead
+    of the baseline.
+
+    This is the *only* place the launcher learns which sidecar to run,
+    so it's also the single point a layered product configures to
+    take over sidecar launching.
+    """
+    pkg_dir = os.path.dirname(os.path.realpath(__file__))
+    config_path = os.path.join(pkg_dir, "sidecar_module.txt")
+    if os.path.isfile(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                module = f.read().strip()
+            if module:
+                logger.info("Using sidecar module from sidecar_module.txt: %s", module)
+                return module
+        except Exception as e:
+            logger.warning("Failed to read sidecar_module.txt: %s", e)
+    return "smoothie.sidecar.main"
+
+
 def start_sidecar(blender_port: int, sidecar_port: int = 8888) -> int | None:
     """Start the sidecar process. Returns the port or None on failure."""
     global _process, _sidecar_port
@@ -32,8 +59,9 @@ def start_sidecar(blender_port: int, sidecar_port: int = 8888) -> int | None:
     # Parent dir containing the smoothie package
     pkg_parent = os.path.dirname(pkg_dir)
 
+    sidecar_module = _find_sidecar_module()
     cmd = [
-        python, "-m", "smoothie.sidecar.main",
+        python, "-m", sidecar_module,
         "--port", str(sidecar_port),
         "--blender-port", str(blender_port),
     ]
