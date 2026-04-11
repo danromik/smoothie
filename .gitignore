@@ -14,6 +14,10 @@ build/
 # Installer-generated pointer to the sidecar venv
 smoothie/venv_path.txt
 
+# Installer-generated override pointing at a non-baseline sidecar module.
+# Per-install config file; never committed. Same pattern as venv_path.txt.
+smoothie/sidecar_module.txt
+
 # Logs
 logs/
 
