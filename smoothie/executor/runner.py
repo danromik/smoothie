@@ -1,4 +1,5 @@
 import io
+import os
 import re
 import sys
 import traceback
@@ -6,6 +7,9 @@ import types
 from dataclasses import dataclass
 
 from .sandbox import validate_code, create_restricted_globals
+
+
+_BUILTIN_LIB_DIR = os.path.join(os.path.dirname(__file__), "builtin_libs")
 
 
 @dataclass
@@ -58,6 +62,57 @@ def _fix_blender5_compat(code: str) -> str:
         flags=re.MULTILINE | re.DOTALL,
     )
     return code
+
+
+def _load_builtin_libraries(namespace: dict) -> list[str]:
+    """Load library files shipped with the add-on (executor/builtin_libs/).
+
+    Always-available helpers like framing and (eventually) physics, lighting,
+    sound design. User library files in bpy.data.texts load after these and
+    can override them by re-defining the same names.
+    """
+    if not os.path.isdir(_BUILTIN_LIB_DIR):
+        return []
+
+    loaded = []
+    filenames = sorted(
+        f for f in os.listdir(_BUILTIN_LIB_DIR)
+        if f.endswith(".py") and not f.startswith("_")
+    )
+
+    for filename in filenames:
+        key = "__builtin__/" + filename
+        path = os.path.join(_BUILTIN_LIB_DIR, filename)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                lib_code = f.read()
+        except OSError:
+            continue
+
+        content_hash = hash(lib_code)
+        if _loaded_library_versions.get(key) == content_hash:
+            continue
+
+        warnings = validate_code(lib_code)
+        if warnings:
+            continue
+
+        try:
+            exec(lib_code, namespace)
+            _loaded_library_versions[key] = content_hash
+            # Only expose public names to the persistent namespace. Private
+            # helpers (leading underscore) are still reachable via the
+            # library function's own __globals__ closure, but don't clutter
+            # the agent-visible namespace.
+            _persistent_namespace.update(
+                {k: v for k, v in namespace.items()
+                 if not k.startswith("_") and (callable(v) or isinstance(v, type))}
+            )
+            loaded.append(key)
+        except Exception:
+            pass
+
+    return loaded
 
 
 def _load_library_files(namespace: dict) -> list[str]:
@@ -121,7 +176,9 @@ def execute_generated_code(code: str) -> ExecutionResult:
     # Merge persistent namespace (previously defined functions/classes)
     restricted_globals.update(_persistent_namespace)
 
-    # Pre-load library files from bpy.data.texts
+    # Pre-load built-in libraries shipped with the add-on, then user library
+    # files from bpy.data.texts (user files load second so they can override).
+    _load_builtin_libraries(restricted_globals)
     _load_library_files(restricted_globals)
 
     # Track which keys existed before execution

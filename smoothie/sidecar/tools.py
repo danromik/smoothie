@@ -194,6 +194,63 @@ async def read_timeline(args: dict) -> dict:
     return _json_result(result.get("data", result))
 
 
+# ─── Camera Perception Tools ──────────────────────────────
+
+@tool(
+    "check_camera_visibility",
+    "Verify that a camera has a clear line of sight to one or more subject "
+    "objects by raycasting. For each sampled frame, casts rays from the "
+    "camera to the bound_box corners of every mesh in the subject set (Empty "
+    "parents are traversed recursively to their mesh children) and reports "
+    "what fraction of sample points are visible, plus the names of any "
+    "blocking objects. Useful after positioning a camera to confirm the shot "
+    "is not obstructed by nearby geometry — the framing helpers fit extent "
+    "but do not check occlusion.",
+    {
+        "type": "object",
+        "properties": {
+            "subjects": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": (
+                    "Names of subject objects to check. Empty parents are "
+                    "resolved to their mesh descendants automatically."
+                ),
+            },
+            "camera": {
+                "type": "string",
+                "description": (
+                    "Optional camera object name. Defaults to the active "
+                    "scene camera."
+                ),
+            },
+            "frames": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "description": (
+                    "Optional list of frame numbers to sample. Defaults to "
+                    "the current frame. For animated cameras, pass several "
+                    "key frames to check visibility throughout the shot."
+                ),
+            },
+        },
+        "required": ["subjects"],
+    },
+)
+async def check_camera_visibility(args: dict) -> dict:
+    result = await query_blender("/api/check_camera_visibility", {
+        "subjects": args.get("subjects", []),
+        "camera": args.get("camera", ""),
+        "frames": args.get("frames", []),
+    })
+    if not result.get("success"):
+        return _mcp_result(
+            f"check_camera_visibility failed: {result.get('error', 'unknown')}",
+            is_error=True,
+        )
+    return _mcp_result(result.get("content", ""))
+
+
 # ─── Library File Tools ───────────────────────────────────
 
 @tool(

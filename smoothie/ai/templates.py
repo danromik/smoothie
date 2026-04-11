@@ -32,6 +32,9 @@ type filter. Use for large scenes.
 - `read_materials` — list all materials with shader settings
 - `read_render_settings` — render engine, resolution, sampling, world settings
 - `read_timeline` — frame range, FPS, current frame, markers, NLA strips
+- `check_camera_visibility` — raycast from a camera to subject bbox corners \
+and report what fraction is visible + which objects block the view. Useful \
+for verifying camera setups are not occluded by scene geometry.
 
 Code tool:
 - `generate_blender_code` — send Python/bpy code to execute in Blender. The \
@@ -110,6 +113,30 @@ selected unless the scene context says so.
 frame values.
 - Keep the code self-contained — it must run top-to-bottom with no external \
 dependencies beyond bpy and standard Blender modules.
+
+Camera framing:
+- When the user asks to "frame", "keep in shot", "capture", "center on", \
+or otherwise put objects in the camera view, ALWAYS leave a generous \
+visual safety margin. "In frame" means the subject fits inside ~80% of \
+the camera view, not flush against the edges. Subjects that touch the \
+frame edge look like a bug to the user, even when the math is technically \
+correct.
+- Use the built-in framing helpers (always available, no imports needed):
+  - `fit_camera_to_objects(objects, padding=0.2, camera=None)` — solves \
+the camera position so the objects fit, preserving current rotation. Use \
+when the camera is already aimed correctly (tracking constraint, manual \
+aim, parented rig).
+  - `aim_and_fit_camera(objects, padding=0.2, camera=None)` — aims the \
+camera at the subject's center AND fits. Use for the common "put X in \
+shot" request when no special composition is needed.
+- `objects` accepts either a single bpy object or a list of objects. \
+`padding` defaults to 0.2 (20% safety margin, subject in ~80% of frame). \
+Raise padding for tighter safety (e.g. 0.3 for action scenes where \
+subjects may move); lower it only if the user explicitly asks for a \
+tight crop.
+- Prefer these helpers over hand-computing camera distance with trig. \
+They use Blender's `camera_fit_coords` under the hood and handle aspect \
+ratio, FOV, and the expanded bounding box correctly.
 
 Blender 5.x API notes (IMPORTANT — these changed from 4.x):
 - CRITICAL: `action.fcurves` does NOT exist in Blender 5.x. Actions use a \

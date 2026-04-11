@@ -76,6 +76,8 @@ def handle_request(handler, method):
             _handle_command(handler, "search_blenderkit", body)
         elif path == "/api/blenderkit/import":
             _handle_command(handler, "import_blenderkit_asset", body)
+        elif path == "/api/check_camera_visibility":
+            _handle_command(handler, "check_camera_visibility", body)
         else:
             _send_json(handler, 404, {"error": "Not found"})
 

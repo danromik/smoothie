@@ -417,6 +417,137 @@ def _process_command(cmd):
         cmd.result = {"success": True}
         cmd.done_event.set()
 
+    elif cmd.action == "check_camera_visibility":
+        from mathutils import Vector
+
+        camera_name = cmd.data.get("camera", "") or ""
+        subject_names = cmd.data.get("subjects", []) or []
+        frames = cmd.data.get("frames", []) or []
+
+        scene = bpy.context.scene
+
+        if camera_name:
+            camera = bpy.data.objects.get(camera_name)
+            if camera is None or camera.type != "CAMERA":
+                cmd.result = {"success": False, "error": f"Camera '{camera_name}' not found or not a camera"}
+                cmd.done_event.set()
+                return
+        else:
+            camera = scene.camera
+            if camera is None:
+                cmd.result = {"success": False, "error": "No active scene camera"}
+                cmd.done_event.set()
+                return
+
+        # Resolve subjects + descendants
+        subjects = {}
+        missing = []
+        for name in subject_names:
+            obj = bpy.data.objects.get(name)
+            if obj is None:
+                missing.append(name)
+                continue
+            stack = [obj]
+            while stack:
+                o = stack.pop()
+                if id(o) in subjects:
+                    continue
+                subjects[id(o)] = o
+                for ch in o.children:
+                    stack.append(ch)
+        if missing:
+            cmd.result = {"success": False, "error": f"Subjects not found: {', '.join(missing)}"}
+            cmd.done_event.set()
+            return
+        if not subjects:
+            cmd.result = {"success": False, "error": "No subjects specified"}
+            cmd.done_event.set()
+            return
+
+        subject_name_set = {o.name for o in subjects.values()}
+
+        if not frames:
+            frames = [scene.frame_current]
+
+        per_frame = []
+        for frame in frames:
+            try:
+                scene.frame_set(int(frame))
+                bpy.context.view_layer.update()
+            except Exception as e:
+                per_frame.append({"frame": frame, "error": f"frame_set failed: {e}"})
+                continue
+
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            cam_loc = camera.matrix_world.translation
+
+            # Sample points: each subject mesh's 8 bound_box corners
+            sample_points = []
+            for obj in subjects.values():
+                if obj.type == "MESH" and obj.data and len(obj.data.vertices) > 0:
+                    mw = obj.matrix_world
+                    for c in obj.bound_box:
+                        sample_points.append(mw @ Vector(c))
+
+            if not sample_points:
+                per_frame.append({
+                    "frame": frame,
+                    "visible_fraction": 0.0,
+                    "error": "no mesh bounds (subjects have no mesh geometry to check)",
+                })
+                continue
+
+            total = len(sample_points)
+            visible = 0
+            blockers = {}
+            for pt in sample_points:
+                delta = pt - cam_loc
+                distance = delta.length
+                if distance < 1e-6:
+                    visible += 1
+                    continue
+                direction = delta / distance
+                hit, loc, normal, idx, hit_obj, mat = scene.ray_cast(
+                    depsgraph, cam_loc, direction, distance=distance + 0.001
+                )
+                if not hit:
+                    visible += 1
+                elif hit_obj and hit_obj.name in subject_name_set:
+                    visible += 1  # self-hit — subject is visible
+                else:
+                    bname = hit_obj.name if hit_obj else "<unknown>"
+                    blockers[bname] = blockers.get(bname, 0) + 1
+
+            per_frame.append({
+                "frame": frame,
+                "visible_fraction": visible / total,
+                "sample_count": total,
+                "visible_count": visible,
+                "occluded_by": dict(sorted(blockers.items(), key=lambda x: -x[1])),
+            })
+
+        # Human-readable report
+        lines = [f"Camera visibility check: {camera.name} -> [{', '.join(subject_names)}]"]
+        for r in per_frame:
+            frame = r["frame"]
+            if "error" in r:
+                lines.append(f"  frame {frame}: ERROR — {r['error']}")
+                continue
+            vf = r["visible_fraction"]
+            vc = r["visible_count"]
+            tc = r["sample_count"]
+            lines.append(f"  frame {frame}: {vf * 100:.0f}% visible ({vc}/{tc} sample points)")
+            if r["occluded_by"]:
+                blockers_str = ", ".join(f"{n} ({c})" for n, c in r["occluded_by"].items())
+                lines.append(f"    blocked by: {blockers_str}")
+
+        cmd.result = {
+            "success": True,
+            "content": "\n".join(lines),
+            "data": per_frame,
+        }
+        cmd.done_event.set()
+
     elif cmd.action == "get_project_name":
         filepath = bpy.data.filepath
         if filepath:
