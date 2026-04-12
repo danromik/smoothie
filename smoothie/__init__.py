@@ -64,6 +64,13 @@ def register():
     if not _HAS_BPY:
         return
 
+    from .ui.panel import _load_branding
+    _brand = _load_branding()
+    if _brand.get("product_name"):
+        bl_info["name"] = _brand["product_name"]
+    if _brand.get("panel_category"):
+        bl_info["location"] = f"View3D > Sidebar > {_brand['panel_category']}"
+
     from .ui.properties import register_properties
     from .ui.operators import classes as operator_classes
     from .ui.panel import classes as panel_classes

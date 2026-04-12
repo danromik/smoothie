@@ -201,70 +201,134 @@ body.dragging { user-select: none; cursor: col-resize; }
   flex-shrink: 0;
 }
 
-.context-bar-wrapper {
+.pane-header-left {
   display: flex;
   align-items: center;
-  gap: 0;
-  flex-shrink: 0;
+  gap: 10px;
+}
+
+.context-indicator-wrapper {
   position: relative;
 }
 
-.context-bar {
-  width: 64px;
-  height: 16px;
-  background: var(--bg-input);
-  border-radius: 4px;
-  overflow: hidden;
-  position: relative;
-  border: 1px solid var(--border);
+.context-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   cursor: default;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
-.context-bar-fill {
-  height: 100%;
+.context-indicator-bar {
+  width: 40px;
+  height: 6px;
+  background: var(--bg-input);
   border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.context-indicator-fill {
+  height: 100%;
+  border-radius: 2px;
   background: var(--purple);
   transition: width 0.4s ease, background-color 0.4s ease;
   min-width: 0;
 }
 
-.context-bar-fill.warning {
+.context-indicator-fill.warning {
   background: #c0392b;
 }
 
-.context-bar-text {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9px;
+.context-indicator-text {
+  font-size: 10px;
   font-weight: 600;
-  color: var(--text-primary);
-  text-shadow: 0 0 3px rgba(0,0,0,0.6);
-  pointer-events: none;
+  color: var(--text-secondary);
+  text-transform: none;
+  letter-spacing: 0;
 }
 
-.context-bar-tooltip {
-  display: none;
-  position: fixed;
+.context-indicator-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
   background: var(--bg-secondary);
   border: 2px solid var(--accent);
   border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1.45;
-  color: var(--text-secondary);
-  width: 240px;
-  white-space: normal;
-  text-align: left;
   box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-  z-index: 1000;
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
   pointer-events: none;
+  min-width: 280px;
 }
 
-.context-bar-tooltip.warn { color: #e67e67; }
+.context-indicator-dropdown::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -10px;
+  height: 10px;
+}
+
+.context-indicator-wrapper:hover .context-indicator-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.context-indicator-info {
+  padding: 10px 14px;
+}
+
+.context-indicator-model,
+.context-indicator-usage {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.context-indicator-usage.warn {
+  color: #e67e67;
+}
+
+.context-indicator-divider {
+  height: 1px;
+  background: var(--border);
+}
+
+.context-indicator-action {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.context-indicator-action:last-child {
+  border-radius: 0 0 6px 6px;
+}
+
+.context-indicator-action:hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
 
 
 /* ─── Icon-only toolbar buttons ────────────────────────── */
@@ -385,9 +449,9 @@ body.dragging { user-select: none; cursor: col-resize; }
   right: 0;
   width: 320px;
   background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  border: 2px solid var(--accent);
   border-radius: 10px;
-  box-shadow: 0 8px 24px var(--shadow);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
   z-index: 100;
   display: none;
   padding: 16px;
@@ -1247,14 +1311,6 @@ body.dragging { user-select: none; cursor: col-resize; }
     <span class="status-value" id="statusFileSize">—</span>
     <span class="status-dot"></span>
     <span class="status-modified" id="statusModified"></span>
-    <span class="status-dot"></span>
-    <div class="context-bar-wrapper" id="contextBarWrapper">
-      <div class="context-bar">
-        <div class="context-bar-fill" id="contextBarFill" style="width:0%"></div>
-        <div class="context-bar-text" id="contextBarText">0%</div>
-      </div>
-      <div class="context-bar-tooltip" id="contextBarTooltip">Context window 0% full. This shows how much of Claude's memory of the current chat is used. When it fills up, clear the chat via the ... menu to start fresh.</div>
-    </div>
   </div>
 
   <div class="toolbar-actions">
@@ -1311,11 +1367,28 @@ body.dragging { user-select: none; cursor: col-resize; }
   <!-- Chat Pane -->
   <div class="pane pane-chat" id="paneChat">
     <div class="pane-header">
-      Chat
+      <div class="pane-header-left">
+        Chat
+        <div class="context-indicator-wrapper" id="contextIndicatorWrapper">
+          <div class="context-indicator" id="contextIndicator">
+            <div class="context-indicator-bar">
+              <div class="context-indicator-fill" id="contextBarFill" style="width:0%"></div>
+            </div>
+            <span class="context-indicator-text" id="contextBarText">0%</span>
+          </div>
+          <div class="context-indicator-dropdown" id="contextIndicatorDropdown">
+            <div class="context-indicator-info">
+              <div class="context-indicator-model" id="contextModelLabel">Powered by Claude</div>
+              <div class="context-indicator-usage" id="contextUsageLabel">Context window: — </div>
+            </div>
+            <div class="context-indicator-divider"></div>
+            <button class="context-indicator-action" onclick="clearChat();closeContextIndicator()">Clear Chat</button>
+          </div>
+        </div>
+      </div>
       <div class="chat-menu-wrapper">
         <button class="chat-menu-btn" onclick="toggleChatMenu(event)">&#8943;</button>
         <div class="chat-menu-dropdown" id="chatMenuDropdown">
-          <button class="chat-menu-item" onclick="clearChat();closeChatMenu()">Clear Chat</button>
           <button class="chat-menu-item" onclick="downloadChat();closeChatMenu()">Download Chat</button>
           <button class="chat-menu-item" onclick="printChat();closeChatMenu()">Print Chat</button>
         </div>
@@ -1951,7 +2024,7 @@ function connectSSE(sessionId) {
           + (data.usage.cache_creation_input_tokens || 0)
           + (data.usage.cache_read_input_tokens || 0);
         const maxTokens = 200000;
-        updateContextBar(Math.min(Math.round((totalTokens / maxTokens) * 100), 100));
+        updateContextBar(Math.min(Math.round((totalTokens / maxTokens) * 100), 100), totalTokens, maxTokens, null);
       }
     } catch {}
     loadContextUsage();
@@ -2781,23 +2854,45 @@ function updateProjectInfo(d) {
   document.getElementById('statusModified').textContent = formatModifiedTime(d.modified_time);
 }
 
-function updateContextBar(percent) {
+function updateContextBar(percent, totalTokens, maxTokens, modelDisplay) {
   const fill = document.getElementById('contextBarFill');
   const text = document.getElementById('contextBarText');
-  const tooltip = document.getElementById('contextBarTooltip');
+  const modelLabel = document.getElementById('contextModelLabel');
+  const usageLabel = document.getElementById('contextUsageLabel');
   percent = Math.min(Math.max(percent, 0), 100);
   fill.style.width = percent + '%';
   text.textContent = percent + '%';
 
   if (percent >= 65) {
     fill.classList.add('warning');
-    tooltip.classList.add('warn');
-    tooltip.textContent = `Context window ${percent}% full. Claude's memory of this chat is nearly used up — clear the chat via the ... menu to start fresh.`;
+    usageLabel.classList.add('warn');
   } else {
     fill.classList.remove('warning');
-    tooltip.classList.remove('warn');
-    tooltip.textContent = `Context window ${percent}% full. This shows how much of Claude's memory of the current chat is used. When it fills up, clear the chat via the ... menu to start fresh.`;
+    usageLabel.classList.remove('warn');
   }
+
+  if (modelDisplay) {
+    modelLabel.textContent = 'Powered by ' + modelDisplay;
+  }
+  if (maxTokens) {
+    const maxK = Math.round(maxTokens / 1000) + 'K';
+    usageLabel.textContent = 'Context window: ' + maxK + ' tokens, ' + percent + '% used';
+  }
+}
+
+function closeContextIndicator() {
+  const wrapper = document.getElementById('contextIndicatorWrapper');
+  wrapper.style.pointerEvents = 'none';
+  const dd = document.getElementById('contextIndicatorDropdown');
+  dd.style.opacity = '0';
+  dd.style.visibility = 'hidden';
+  dd.style.pointerEvents = 'none';
+  setTimeout(() => {
+    wrapper.style.pointerEvents = '';
+    dd.style.opacity = '';
+    dd.style.visibility = '';
+    dd.style.pointerEvents = '';
+  }, 200);
 }
 
 function loadProjectInfo() {
@@ -2806,32 +2901,9 @@ function loadProjectInfo() {
 
 function loadContextUsage() {
   fetch('/api/context-usage').then(r => r.json()).then(d => {
-    updateContextBar(d.percent || 0);
+    updateContextBar(d.percent || 0, d.total_tokens, d.max_tokens, d.model_display);
   }).catch(() => {});
 }
-
-// Context-bar tooltip positioning. The tooltip uses position:fixed so it
-// escapes the status-area's overflow:hidden clip. We compute its viewport
-// coordinates from the wrapper's bounding rect on mouseenter.
-(function setupContextBarTooltip() {
-  const wrapper = document.getElementById('contextBarWrapper');
-  const tooltip = document.getElementById('contextBarTooltip');
-  if (!wrapper || !tooltip) return;
-  const TOOLTIP_WIDTH = 280;
-  const MARGIN = 8;
-  wrapper.addEventListener('mouseenter', () => {
-    const rect = wrapper.getBoundingClientRect();
-    let left = rect.left + rect.width / 2 - TOOLTIP_WIDTH / 2;
-    // Clamp so the tooltip stays inside the viewport horizontally.
-    left = Math.max(MARGIN, Math.min(left, window.innerWidth - TOOLTIP_WIDTH - MARGIN));
-    tooltip.style.left = left + 'px';
-    tooltip.style.top = (rect.bottom + MARGIN) + 'px';
-    tooltip.style.display = 'block';
-  });
-  wrapper.addEventListener('mouseleave', () => {
-    tooltip.style.display = 'none';
-  });
-})();
 
 let _lastProjectData = null;
 const _origUpdateProjectInfo = updateProjectInfo;

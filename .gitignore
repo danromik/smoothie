@@ -18,6 +18,9 @@ smoothie/venv_path.txt
 # Per-install config file; never committed. Same pattern as venv_path.txt.
 smoothie/sidecar_module.txt
 
+# Optional panel branding config written by downstream installers.
+smoothie/panel_config.json
+
 # Logs
 logs/
 

@@ -498,10 +498,17 @@ async def api_context_usage(request: Request) -> JSONResponse:
     else:
         max_tokens = 200000  # sonnet default
     percent = round((total_tokens / max_tokens) * 100) if max_tokens else 0
+    model_names = {
+        "claude-sonnet-4-6": "Claude Sonnet 4.6",
+        "claude-opus-4-6": "Claude Opus 4.6",
+        "claude-haiku-3-5-20241022": "Claude Haiku 3.5",
+    }
     return JSONResponse({
         "percent": min(percent, 100),
         "total_tokens": total_tokens,
         "max_tokens": max_tokens,
+        "model": state.settings.model,
+        "model_display": model_names.get(state.settings.model, state.settings.model),
     })
 
 

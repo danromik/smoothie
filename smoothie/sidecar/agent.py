@@ -200,11 +200,8 @@ async def ensure_client() -> ClaudeSDKClient:
         "mcp__smoothie__search_blenderkit",
         "mcp__smoothie__import_blenderkit_asset",
     ]
-    # Append extra tools registered via build_agent_app(). The SDK uses
-    # the decorated function's __name__ to route tool calls, so we
-    # construct the mcp__smoothie__<name> entry from that.
     for tool_fn in extra_tools:
-        tool_name = getattr(tool_fn, "__name__", None)
+        tool_name = getattr(tool_fn, "__name__", None) or getattr(tool_fn, "name", None)
         if tool_name:
             allowed_tools.append(f"mcp__smoothie__{tool_name}")
 
