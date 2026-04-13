@@ -116,6 +116,14 @@ User settings (model, auth mode, API key, auto-execute) persist to `~/.config/sm
 - **Claude Code Subscription** (default): Agent SDK inherits CLI auth. No API key needed.
 - **API Key**: User enters an Anthropic API key in the web UI settings.
 
+### Extension Point: `smoothie.sidecar.factory`
+Layered products call `build_agent_app()` to compose a sidecar app without modifying Smoothie's source. Parameters:
+- `extra_tools` — additional MCP tool functions (share the `smoothie` MCP namespace).
+- `extra_routes` — additional Starlette routes appended to the sidecar's route table.
+- `frontend_path` — path to a custom `frontend.html`.
+- `system_prompt_extension` — text appended to the baseline system prompt (describe product-specific capabilities and user expectations).
+- `extra_library_files` — reserved for future use.
+
 ## MCP Tools
 
 ### Code Generation
@@ -160,10 +168,9 @@ User settings (model, auth mode, API key, auto-execute) persist to `~/.config/sm
 ## Frontend UI
 
 The browser UI (`localhost:8888`) has:
-- **Toolbar**: Settings dropdown, Library modal, project title, segmented [Code | Developer] pane toggle
+- **Toolbar**: Settings dropdown, Library modal, project title, Scratchpad toggle button
 - **Chat pane**: Messages, tool info events, code generation blocks with Execute/Reject/feedback controls, "..." menu with Clear Chat, Download Chat, and Print Chat
-- **Code pane** (hidden by default, auto-opens on "View code"): Code viewer with line numbers and syntax highlighting, Copy code button
-- **Developer pane** (hidden by default): Real-time stream events log
+- **Scratchpad pane** (hidden by default): Generic surface for tool output and user decisions. Auto-opens on "View code" and today shows generated code with line numbers and syntax highlighting plus a Copy code button. Designed so layered products can add other scratchpad views without baseline changes.
 
 ### Code Generation Block (in chat)
 - Header with byte count + "View code" button

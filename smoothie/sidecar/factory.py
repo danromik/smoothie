@@ -36,12 +36,16 @@ logger = logging.getLogger("smoothie.sidecar.factory")
 _extra_tools: list[Any] = []
 _extra_library_files: dict[str, str] = {}
 _frontend_path_override: str | None = None
+_system_prompt_extension: str | None = None
+_extra_routes: list[Any] = []
 
 
 def build_agent_app(
     extra_tools: list | None = None,
     extra_library_files: dict[str, str] | None = None,
     frontend_path: str | None = None,
+    system_prompt_extension: str | None = None,
+    extra_routes: list | None = None,
 ):
     """Compose the Smoothie sidecar Starlette app with optional extensions.
 
@@ -59,27 +63,41 @@ def build_agent_app(
         frontend_path: Absolute path to a ``frontend.html`` file to
             serve at ``/``. Defaults to Smoothie's baseline frontend
             (next to ``app.py``).
+        system_prompt_extension: Additional text appended to the
+            baseline Smoothie system prompt. Use this to describe
+            product-specific capabilities, tools, and user expectations
+            that the AI needs to know about.
+        extra_routes: Additional Starlette routes (``Route`` /
+            ``WebSocketRoute``) to append to the sidecar's route table.
+            Layered products use this to add their own HTTP endpoints
+            without having to wrap or fork ``app.py``.
 
     Returns:
         The configured Smoothie Starlette ``app`` instance, ready to
         hand to ``uvicorn.run(app, ...)``.
 
-    Example (from Smoothie Studio's sidecar)::
+    Example (from a layered product's sidecar)::
 
         from smoothie.sidecar.factory import build_agent_app
-        from studio_sidecar.tools import hello
+        from my_extension.tools import hello
+        from my_extension.routes import my_routes
 
         app = build_agent_app(
-            extra_tools=[hello.hello],
-            frontend_path="/path/to/studio_frontend/frontend.html",
+            extra_tools=[hello],
+            extra_routes=my_routes,
+            system_prompt_extension="... product-specific guidance ...",
+            frontend_path="/path/to/my_extension/frontend.html",
         )
         uvicorn.run(app, host="127.0.0.1", port=8888)
     """
     global _extra_tools, _extra_library_files, _frontend_path_override
+    global _system_prompt_extension, _extra_routes
 
     _extra_tools = list(extra_tools) if extra_tools else []
     _extra_library_files = dict(extra_library_files) if extra_library_files else {}
     _frontend_path_override = frontend_path
+    _system_prompt_extension = system_prompt_extension
+    _extra_routes = list(extra_routes) if extra_routes else []
 
     if _extra_library_files:
         logger.warning(
@@ -89,9 +107,12 @@ def build_agent_app(
         )
 
     logger.info(
-        "build_agent_app: registered %d extra tools, frontend_path=%s",
+        "build_agent_app: registered %d extra tools, %d extra routes, frontend_path=%s, "
+        "system_prompt_ext=%s",
         len(_extra_tools),
+        len(_extra_routes),
         _frontend_path_override or "(baseline)",
+        f"{len(_system_prompt_extension)} chars" if _system_prompt_extension else "(none)",
     )
 
     # Import app here to avoid a circular-import chain at module-load
@@ -99,6 +120,13 @@ def build_agent_app(
     # blender_proxy.py — importing app eagerly from factory would make
     # factory.py transitively depend on the Blender side.
     from smoothie.sidecar.app import app
+
+    # Append any extra routes onto the baseline route table. Starlette's
+    # Router.routes is a mutable list, so this takes effect for all
+    # subsequent requests without rebuilding the app.
+    if _extra_routes:
+        app.router.routes.extend(_extra_routes)
+
     return app
 
 
@@ -120,6 +148,25 @@ def get_extra_library_files() -> dict[str, str]:
     those are logged + ignored for now).
     """
     return dict(_extra_library_files)
+
+
+def get_system_prompt_extension() -> str | None:
+    """Return the system prompt extension registered via build_agent_app().
+
+    Consumed by ``agent._build_system_prompt()`` to append
+    product-specific context after the baseline Smoothie prompt and
+    project notes. Returns ``None`` if no extension was registered.
+    """
+    return _system_prompt_extension
+
+
+def get_extra_routes() -> list:
+    """Return a copy of the extra Starlette routes registered via build_agent_app().
+
+    Baseline Smoothie appends these onto the app's route table at
+    factory build time; this getter exists for introspection/tests.
+    """
+    return list(_extra_routes)
 
 
 def get_frontend_path() -> str:

@@ -611,8 +611,8 @@ body.dragging { user-select: none; cursor: col-resize; }
 }
 
 .pane-chat { flex: 1 1 100%; }
-.pane-code { flex: 1 1 40%; display: none; }
-.pane-code.visible { display: flex; }
+.pane-scratchpad { flex: 1 1 40%; display: none; }
+.pane-scratchpad.visible { display: flex; }
 
 .pane-header {
   display: flex;
@@ -654,8 +654,8 @@ body.dragging { user-select: none; cursor: col-resize; }
 
 .divider:hover, .divider.active { background: var(--divider-hover); }
 
-.divider-code { display: none; }
-.divider-code.visible { display: block; }
+.divider-scratchpad { display: none; }
+.divider-scratchpad.visible { display: block; }
 
 /* ─── Scrollable Areas ───────────────────────────────────── */
 .scroll-area {
@@ -887,12 +887,12 @@ body.dragging { user-select: none; cursor: col-resize; }
   margin-top: 4px;
 }
 
-/* ─── Code Pane ──────────────────────────────────────────── */
-.code-list {
+/* ─── Scratchpad Pane ───────────────────────────────────── */
+.scratchpad-content {
   padding: 12px;
 }
 
-.code-placeholder {
+.scratchpad-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1357,7 +1357,7 @@ body.dragging { user-select: none; cursor: col-resize; }
       <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
     </button>
 
-    <button class="toolbar-btn" id="codeToggle" onclick="toggleCodePane()">Code</button>
+    <button class="toolbar-btn" id="scratchpadToggle" onclick="toggleScratchpadPane()">Scratchpad</button>
   </div>
 </div>
 
@@ -1412,20 +1412,21 @@ body.dragging { user-select: none; cursor: col-resize; }
   </div>
 
   <!-- Divider: Chat | Code -->
-  <div class="divider divider-code" id="dividerChatCode"></div>
+  <div class="divider divider-scratchpad" id="dividerChatScratchpad"></div>
 
-  <!-- Code Pane -->
-  <div class="pane pane-code" id="paneCode">
+  <!-- Scratchpad Pane — generic surface for tool output and user decisions.
+       Today shows generated code; future/layered products can add more views. -->
+  <div class="pane pane-scratchpad" id="paneScratchpad">
     <div class="pane-header">
-      Code
+      <span id="scratchpadTitle">Scratchpad</span>
       <button class="pane-header-btn" id="copyCodeBtn" onclick="copyCurrentCode()" style="display:none">Copy code</button>
     </div>
-    <div class="scroll-area" id="codeScroll">
-      <div id="codeList" class="code-list">
-        <div class="code-placeholder" id="codePlaceholder">
+    <div class="scroll-area" id="scratchpadScroll">
+      <div id="scratchpadContent" class="scratchpad-content">
+        <div class="scratchpad-placeholder" id="scratchpadPlaceholder">
           <div class="empty-state">
-            <div class="empty-icon">&#128196;</div>
-            <div class="empty-text">Click "View code" on a code block to see the code here</div>
+            <div class="empty-icon">&#128221;</div>
+            <div class="empty-text">Tool output and decisions will appear here<br><span style="font-size:11px;color:var(--text-muted)">Click "View code" on a code block to see it here</span></div>
           </div>
         </div>
         <div class="code-viewer" id="codeViewer">
@@ -1452,7 +1453,7 @@ let isStreaming = false;
 let currentStreamEl = null;
 let currentStreamText = '';
 let autoScrollChat = true;
-let autoScrollCode = true;
+let autoScrollScratchpad = true;
 let settingsOpen = false;
 let currentAuthMode = 'subscription';
 let codeCards = [];
@@ -1614,7 +1615,7 @@ function _updateCodePaneContent(cardIndex) {
   const card = codeCards[cardIndex];
   if (!card) return;
 
-  const placeholder = document.getElementById('codePlaceholder');
+  const placeholder = document.getElementById('scratchpadPlaceholder');
   const viewer = document.getElementById('codeViewer');
   const copyBtn = document.getElementById('copyCodeBtn');
 
@@ -1637,7 +1638,7 @@ function showCodeInPane(cardIndex) {
   const card = codeCards[cardIndex];
   if (!card) return;
 
-  showCodePane(); // Auto-open code pane
+  showScratchpadPane(); // Auto-open scratchpad
   _updateCodePaneContent(cardIndex);
 }
 
@@ -1796,7 +1797,7 @@ function _disableToolBlock(block, status) {
   if (input) input.disabled = true;
 
   // Auto-hide code pane after execution
-  if (status === 'executed') hideCodePane();
+  if (status === 'executed') hideScratchpadPane();
 }
 
 let codePendingAction = false;
@@ -2115,7 +2116,7 @@ async function loadMessages() {
     // Reset code pane
     activeCodeIndex = -1;
     document.getElementById('codeViewer').classList.remove('active');
-    document.getElementById('codePlaceholder').style.display = '';
+    document.getElementById('scratchpadPlaceholder').style.display = '';
     document.getElementById('copyCodeBtn').style.display = 'none';
     codeCards = [];
 
@@ -2655,30 +2656,30 @@ async function printChat() {
 }
 
 // ─── Pane Toggles ────────────────────────────────────────
-let codePaneVisible = false;
+let scratchpadPaneVisible = false;
 
-function toggleCodePane() {
-  codePaneVisible = !codePaneVisible;
-  document.getElementById('paneCode').classList.toggle('visible', codePaneVisible);
-  document.getElementById('dividerChatCode').classList.toggle('visible', codePaneVisible);
-  document.getElementById('codeToggle').classList.toggle('active', codePaneVisible);
+function toggleScratchpadPane() {
+  scratchpadPaneVisible = !scratchpadPaneVisible;
+  document.getElementById('paneScratchpad').classList.toggle('visible', scratchpadPaneVisible);
+  document.getElementById('dividerChatScratchpad').classList.toggle('visible', scratchpadPaneVisible);
+  document.getElementById('scratchpadToggle').classList.toggle('active', scratchpadPaneVisible);
 }
 
-function showCodePane() {
-  if (!codePaneVisible) {
-    codePaneVisible = true;
-    document.getElementById('paneCode').classList.add('visible');
-    document.getElementById('dividerChatCode').classList.add('visible');
-    document.getElementById('codeToggle').classList.add('active');
+function showScratchpadPane() {
+  if (!scratchpadPaneVisible) {
+    scratchpadPaneVisible = true;
+    document.getElementById('paneScratchpad').classList.add('visible');
+    document.getElementById('dividerChatScratchpad').classList.add('visible');
+    document.getElementById('scratchpadToggle').classList.add('active');
   }
 }
 
-function hideCodePane() {
-  if (codePaneVisible) {
-    codePaneVisible = false;
-    document.getElementById('paneCode').classList.remove('visible');
-    document.getElementById('dividerChatCode').classList.remove('visible');
-    document.getElementById('codeToggle').classList.remove('active');
+function hideScratchpadPane() {
+  if (scratchpadPaneVisible) {
+    scratchpadPaneVisible = false;
+    document.getElementById('paneScratchpad').classList.remove('visible');
+    document.getElementById('dividerChatScratchpad').classList.remove('visible');
+    document.getElementById('scratchpadToggle').classList.remove('active');
   }
 }
 
@@ -2724,36 +2725,36 @@ function copyMessageText(btn) {
 
 // ─── Auto-scroll ─────────────────────────────────────────
 const chatScroll = document.getElementById('chatScroll');
-const codeScroll = document.getElementById('codeScroll');
+const scratchpadScroll = document.getElementById('scratchpadScroll');
 
 chatScroll.addEventListener('scroll', () => {
   const threshold = 80;
   autoScrollChat = chatScroll.scrollHeight - chatScroll.scrollTop - chatScroll.clientHeight < threshold;
 });
 
-codeScroll.addEventListener('scroll', () => {
+scratchpadScroll.addEventListener('scroll', () => {
   const threshold = 80;
-  autoScrollCode = codeScroll.scrollHeight - codeScroll.scrollTop - codeScroll.clientHeight < threshold;
+  autoScrollScratchpad = scratchpadScroll.scrollHeight - scratchpadScroll.scrollTop - scratchpadScroll.clientHeight < threshold;
 });
 
 function maybeScrollChat() { if (autoScrollChat) scrollToBottomChat(); }
-function maybeScrollCode() { if (autoScrollCode) scrollToBottomCode(); }
+function maybeScrollScratchpad() { if (autoScrollScratchpad) scrollToBottomScratchpad(); }
 
 function scrollToBottomChat() {
   chatScroll.scrollTop = chatScroll.scrollHeight;
   autoScrollChat = true;
 }
 
-function scrollToBottomCode() {
-  codeScroll.scrollTop = codeScroll.scrollHeight;
-  autoScrollCode = true;
+function scrollToBottomScratchpad() {
+  scratchpadScroll.scrollTop = scratchpadScroll.scrollHeight;
+  autoScrollScratchpad = true;
 }
 
 // ─── Resizable Dividers ──────────────────────────────────
 (function initDividers() {
-  const dividerCC = document.getElementById('dividerChatCode');
+  const dividerCS = document.getElementById('dividerChatScratchpad');
   const paneChat = document.getElementById('paneChat');
-  const paneCode = document.getElementById('paneCode');
+  const paneScratchpad = document.getElementById('paneScratchpad');
 
   let activeDivider = null;
   let startX = 0;
@@ -2774,7 +2775,7 @@ function scrollToBottomCode() {
     div.classList.add('active');
   }
 
-  dividerCC.addEventListener('mousedown', (e) => onMouseDown(e, paneChat, paneCode, dividerCC));
+  dividerCS.addEventListener('mousedown', (e) => onMouseDown(e, paneChat, paneScratchpad, dividerCS));
 
   document.addEventListener('mousemove', (e) => {
     if (!activeDivider) return;

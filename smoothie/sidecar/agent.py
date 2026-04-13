@@ -92,8 +92,18 @@ _active_tools: dict[str, dict[int, dict]] = {}
 
 
 async def _build_system_prompt() -> str:
-    """Build the system prompt, including smoothie.md content if it exists."""
+    """Build the system prompt, including extensions and smoothie.md content."""
     prompt = SYSTEM_PROMPT
+
+    # Append any product-specific extension registered via the factory.
+    try:
+        from smoothie.sidecar.factory import get_system_prompt_extension
+        extension = get_system_prompt_extension()
+        if extension:
+            prompt += "\n\n" + extension.strip()
+    except Exception as e:
+        logger.debug("Could not load system prompt extension: %s", e)
+
     try:
         result = await query_blender("/api/project-notes", method="GET")
         if result.get("exists") and result.get("content", "").strip():

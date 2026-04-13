@@ -295,6 +295,8 @@ def _process_command(cmd):
                     "description": item.get("description", "")[:100],
                     "author": item.get("author", {}).get("fullName", ""),
                     "is_free": item.get("isFree", False),
+                    "thumbnail_small": item.get("thumbnailSmallUrl", ""),
+                    "thumbnail_middle": item.get("thumbnailMiddleUrl", ""),
                 })
             cmd.result = {"success": True, "data": results}
         except ImportError:
