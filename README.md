@@ -125,7 +125,9 @@ With this mode you're billed per API request based on token usage — see [Anthr
 
 #### Step 4: Install the add-on in Blender
 
-Symlink the `smoothie/` package directory into Blender's add-ons folder:
+Make the `smoothie/` package directory available to Blender by placing it (or a symlink to it) in Blender's add-ons folder.
+
+On **macOS** and **Linux**, a symlink is the easiest approach — edits to the repo are picked up by Blender without reinstalling:
 
 ```bash
 # macOS
@@ -136,6 +138,14 @@ ln -s /path/to/smoothie/smoothie \
 ln -s /path/to/smoothie/smoothie \
   ~/.config/blender/5.1/scripts/addons/smoothie
 ```
+
+On **Windows**, copy the `smoothie\` package directory into:
+
+```
+%APPDATA%\Blender Foundation\Blender\5.1\scripts\addons\
+```
+
+(Symlinks work on Windows too, but they require administrator rights or Developer Mode, so copying is simpler. If you ran `python install.py`, the installer already did this copy for you and you can skip straight to enabling the add-on below.)
 
 Then in Blender: **Edit > Preferences > Add-ons** — search for "Smoothie" and enable it.
 
